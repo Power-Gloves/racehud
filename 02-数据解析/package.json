@@ -1,0 +1,12 @@
+{
+  "name": "racehud-parser",
+  "version": "0.1.0",
+  "private": true,
+  "main": "vbo.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

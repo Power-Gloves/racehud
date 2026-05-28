@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.vite/
+*.log
+03-后端服务/uploads/
+01-数据样本/*.mp4
+01-数据样本/*.mov
+
+# IDE / Kiro 工作区状态
+.kiro/
+.vscode/
+
+# 全局 skill 链接（junction，不应进库）
+.agents/skills/ui-ux-pro-max/
+
+# 临时执行文件
+.agents/skills/playwright-skill/.temp-execution-*.js

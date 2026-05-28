@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Open+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* dragy 设计 tokens（从 laptimer.com bundle 提取） */
+:root {
+  /* 黑色系 */
+  --vt-c-black: #181818;
+  --vt-c-black-soft: #222222;
+  --vt-c-black-mute: #282828;
+  --vt-c-black-bg: #252225;
+
+  /* 品牌蓝 */
+  --vt-c-blue-primary: #0078f3;
+
+  /* 项目用语义化变量 */
+  --color-bg: var(--vt-c-black-bg);
+  --color-black-18: var(--vt-c-black);
+  --color-gray-66: #666666;
+  --color-primary: var(--vt-c-blue-primary);
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Open Sans', sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============== HUD Widget 主题化 utility ============== */
+/* 所有 widget 用这些 class，只通过 CSS 变量切换风格 */
+
+@layer components {
+  .hud-card {
+    width: 100%;
+    height: 100%;
+    background: var(--hud-bg);
+    border: var(--hud-border-w) solid var(--hud-border);
+    border-radius: var(--hud-radius);
+    color: var(--hud-text);
+    backdrop-filter: blur(var(--hud-blur));
+    -webkit-backdrop-filter: blur(var(--hud-blur));
+    box-shadow: var(--hud-shadow);
+    padding: 6px 8px;
+    overflow: hidden;
+    line-height: 1.1;
+  }
+
+  .hud-label {
+    font-size: 9px;
+    color: var(--hud-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  .hud-value {
+    font-family: var(--hud-font-num);
+    font-variant-numeric: tabular-nums;
+    color: var(--hud-text);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .hud-unit {
+    font-size: 9px;
+    color: var(--hud-text-dim);
+    text-transform: uppercase;
+  }
+
+  .hud-accent { color: var(--hud-accent); }
+  .hud-good   { color: var(--hud-good); }
+  .hud-warn   { color: var(--hud-warn); }
+}
+

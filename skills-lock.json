@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "playwright-skill": {
+      "source": "lackeyjb/playwright-skill",
+      "sourceType": "github",
+      "skillPath": "skills/playwright-skill/SKILL.md",
+      "computedHash": "0f4b5a14e0afb85c2855943e5898a2da565c504bc46943aaf9e768f251ceb47f"
+    }
+  }
+}

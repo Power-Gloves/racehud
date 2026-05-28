@@ -1,0 +1,255 @@
+{
+  "target": "https://laptimer.com/overlay",
+  "requestCount": 23,
+  "requests": [
+    {
+      "url": "https://laptimer.com/overlay",
+      "method": "GET",
+      "type": "document"
+    },
+    {
+      "url": "https://laptimer.com/assets/index-CaNhjNuN.js",
+      "method": "GET",
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/rolldown-runtime-BM3Ffeng.js",
+      "method": "GET",
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/vue-CAN0HJOP.js",
+      "method": "GET",
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/gopro-DbpkYsMP.js",
+      "method": "GET",
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/index-BHlVCWxT.css",
+      "method": "GET",
+      "type": "stylesheet"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Aldrich&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap",
+      "method": "GET",
+      "type": "stylesheet"
+    },
+    {
+      "url": "https://laptimer.com/js/worker.js",
+      "method": "GET",
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/fonts/Kernel/Kernel-Semibold.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/Kernel/Kernel-Thin.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/Kernel/Kernel-Heavy.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/Kernel/Kernel-Light.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/Kernel/Kernel-Regular.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/DINPro/DINPro-Black.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/DINPro/DINPro-Bold.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/DINPro/DINPro-Light.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/DINPro/DINPro-Medium.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/DINPro/DINPro-Regular.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/fonts/HelveticaNeue/HelveticaNeueLTPro-BdCn.woff2",
+      "method": "GET",
+      "type": "font"
+    },
+    {
+      "url": "https://laptimer.com/video_icon_wheel.png",
+      "method": "GET",
+      "type": "image"
+    },
+    {
+      "url": "https://www.godragy.com/dragy/app/car_Controller/getCarBrandV2",
+      "method": "GET",
+      "type": "xhr"
+    },
+    {
+      "url": "https://laptimer.com/js/mediabunny.js",
+      "method": "GET",
+      "type": "other"
+    },
+    {
+      "url": "https://laptimer.com/assets/index-CaNhjNuN.js",
+      "method": "GET",
+      "type": "fetch"
+    }
+  ],
+  "savedFiles": [
+    {
+      "url": "https://laptimer.com/assets/rolldown-runtime-BM3Ffeng.js",
+      "fname": "D:\\项目\\个人学习\\tools\\racehud\\.agents\\skills\\playwright-skill\\chunks\\assets_rolldown-runtime-BM3Ffeng.js",
+      "size": 1216,
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/vue-CAN0HJOP.js",
+      "fname": "D:\\项目\\个人学习\\tools\\racehud\\.agents\\skills\\playwright-skill\\chunks\\assets_vue-CAN0HJOP.js",
+      "size": 105282,
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/index-CaNhjNuN.js",
+      "fname": "D:\\项目\\个人学习\\tools\\racehud\\.agents\\skills\\playwright-skill\\chunks\\assets_index-CaNhjNuN.js",
+      "size": 1860203,
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/assets/gopro-DbpkYsMP.js",
+      "fname": "D:\\项目\\个人学习\\tools\\racehud\\.agents\\skills\\playwright-skill\\chunks\\assets_gopro-DbpkYsMP.js",
+      "size": 2844438,
+      "type": "script"
+    },
+    {
+      "url": "https://laptimer.com/js/worker.js",
+      "fname": "D:\\项目\\个人学习\\tools\\racehud\\.agents\\skills\\playwright-skill\\chunks\\js_worker.js",
+      "size": 4882,
+      "type": "script"
+    }
+  ],
+  "scriptTags": {
+    "scripts": [
+      "https://laptimer.com/assets/index-CaNhjNuN.js"
+    ],
+    "preloads": [
+      "https://laptimer.com/assets/rolldown-runtime-BM3Ffeng.js",
+      "https://laptimer.com/assets/vue-CAN0HJOP.js",
+      "https://laptimer.com/assets/gopro-DbpkYsMP.js"
+    ]
+  },
+  "jsRefsInBundle": [
+    "./rolldown-runtime-BM3Ffeng.js",
+    "./vue-CAN0HJOP.js",
+    "./gopro-DbpkYsMP.js",
+    "./js/worker.js",
+    "../../node_modules/is-buffer/index.js",
+    "./../../shims/crypto/crypto.js",
+    "./../../../shims/crypto/crypto.js",
+    "../../../node_modules/is-buffer/index.js",
+    "./arrayLikeToArray.js",
+    "./typeof.js",
+    "./arrayWithoutHoles.js",
+    "./iterableToArray.js",
+    "./unsupportedIterableToArray.js",
+    "./nonIterableSpread.js",
+    "./mutation.js",
+    "./lib/_stream_readable.js",
+    "./lib/_stream_writable.js",
+    "./lib/_stream_duplex.js",
+    "./lib/_stream_transform.js",
+    "./lib/_stream_passthrough.js",
+    "readable-stream/lib/_stream_readable.js",
+    "readable-stream/lib/_stream_writable.js",
+    "readable-stream/lib/_stream_duplex.js",
+    "readable-stream/lib/_stream_transform.js",
+    "readable-stream/lib/_stream_passthrough.js",
+    "readable-stream/lib/internal/streams/end-of-stream.js",
+    "readable-stream/lib/internal/streams/pipeline.js",
+    "process/browser.js",
+    "../node_modules/is-buffer/index.js",
+    "[kw:prepare] +r(e,2)+r(e,2)+r(t,4)+r(n,4)+r(s.length,2)+s}(this.dirRecords.length,n,e,this.zipComment,this.encodeFileName);this.push({data:i,meta:{percent:100}})},u.prototype.prepareNextSource=function(){this.previous=this._sources.shift(),this.openedSource(this.previous.streamInfo),this.isPaused?this.previous.pause():this.previous.resume()},u.prototype.registerPrevious=function(e){this._sources.push(e);var t=this;return e.on(",
+    "[kw:prepare] ,function(){t.closedSource(t.previous.streamInfo),t._sources.length?t.prepareNextSource():t.end()}),e.on(",
+    "[kw:prepare] ,function(e){t.error(e)}),this},u.prototype.resume=function(){return!!o.prototype.resume.call(this)&&(!this.previous&&this._sources.length?(this.prepareNextSource(),!0):this.previous||this._sources.length||this.generatedError?void 0:(this.end(),!0))},u.prototype.error=function(e){var t=this._sources;if(!o.prototype.error.call(this,e))return!1;for(var n=0;n<t.length;n++)try{t[n].error(e)}catch{}return!0},u.prototype.lock=function(){o.prototype.lock.call(this);for(var e=this._sources,t=0;t<e.length;t++)e[t].lock()},t.exports=u},{",
+    "[kw:prepare] )):r.prepareContent(",
+    "[kw:prepare] );var _=null;_=t instanceof l||t instanceof o?t:f.isNode&&f.isStream(t)?new p(e,t):a.prepareContent(e,t,s.binary,s.optimizedBinaryString,s.base64);var v=new u(e,_,s);this.files[e]=v}var i=e(",
+    "[kw:prepare] )+t.toString(16).toUpperCase();return r},n.delay=function(e,t,n){setImmediate(function(){e.apply(n||null,t||[])})},n.inherits=function(e,t){function n(){}n.prototype=t.prototype,e.prototype=new n},n.extend=function(){var e,t,n={};for(e=0;e<arguments.length;e++)for(t in arguments[e])Object.prototype.hasOwnProperty.call(arguments[e],t)&&n[t]===void 0&&(n[t]=arguments[e][t]);return n},n.prepareContent=function(e,t,a,s,l){return o.Promise.resolve(t).then(function(e){return r.blob&&(e instanceof Blob||[",
+    "[kw:prepare] )},prepareReader:function(e){this.reader=r(e)},load:function(e){this.prepareReader(e),this.readEndOfCentral(),this.readCentralDir(),this.readLocalFiles()}},t.exports=c},{",
+    "[kw:worker] &&{}.JEST_WORKER_ID!==void 0||n.activationTrigger.value===0)return;n.activeOptionIndex.value!==null&&n.virtual.value.options.length>n.activeOptionIndex.value&&i.value.scrollToIndex(n.activeOptionIndex.value)}}},i.value.getVirtualItems().map(e=>re(t.default({option:n.virtual.value.options[e.index],open:n.comboboxState.value===0})[0],{key:",
+    "[kw:worker] ./stream/DataWorker",
+    "[kw:worker] );function s(e,t,n,r,i){this.compressedSize=e,this.uncompressedSize=t,this.crc32=n,this.compression=r,this.compressedContent=i}s.prototype={getContentWorker:function(){var e=new i(r.Promise.resolve(this.compressedContent)).pipe(this.compression.uncompressWorker()).pipe(new o(",
+    "[kw:worker] )}),e},getCompressedWorker:function(){return new i(r.Promise.resolve(this.compressedContent)).withStreamInfo(",
+    "[kw:worker] ,this.compression)}},s.createWorkerFrom=function(e,t,n){return e.pipe(new a).pipe(new o(",
+    "[kw:worker] )).pipe(t.compressWorker(n)).pipe(new o(",
+    "[kw:worker] ./stream/GenericWorker",
+    "[kw:worker] ,compressWorker:function(){return new r(",
+    "[kw:worker] )},uncompressWorker:function(){return new r(",
+    "[kw:worker] FlateWorker/",
+    "[kw:worker] ,a.inherits(c,o),c.prototype.processChunk=function(e){this.meta=e.meta,this._pako===null&&this._createPako(),this._pako.push(a.transformTo(s,e.data),!1)},c.prototype.flush=function(){o.prototype.flush.call(this),this._pako===null&&this._createPako(),this._pako.push([],!0)},c.prototype.cleanUp=function(){o.prototype.cleanUp.call(this),this._pako=null},c.prototype._createPako=function(){this._pako=new i[this._pakoAction]({raw:!0,level:this._pakoOptions.level||-1});var e=this;this._pako.onData=function(t){e.push({data:t,meta:e.meta})}},n.compressWorker=function(e){return new c(",
+    "[kw:worker] ,e)},n.uncompressWorker=function(){return new c(",
+    "[kw:worker] ../stream/GenericWorker",
+    "[kw:worker] ZipFileWorker",
+    "[kw:worker] ./ZipFileWorker",
+    "[kw:worker] );return i}(n.options.compression,t.compression),s=n.options.compressionOptions||t.compressionOptions||{},c=n.dir,l=n.date;n._compressWorker(i,s).withStreamInfo(",
+    "[kw:worker] );function l(e){return new i.Promise(function(t,n){var r=e.decompressed.getContentWorker().pipe(new s);r.on(",
+    "[kw:worker] ;t=d.generateWorker(this,n,r)}catch(e){(t=new o(",
+    "[kw:worker] ./GenericWorker",
+    "[kw:worker] ConvertWorker to ",
+    "[kw:worker] DataWorker",
+    "[kw:worker] Worker ",
+    "[kw:worker] ./ConvertWorker",
+    "[kw:worker] }try{this._internalType=o,this._outputType=t,this._mimeType=n,r.checkSupport(o),this._worker=e.pipe(new i(o)),e.lock()}catch(e){this._worker=new a(",
+    "[kw:worker] ),this._worker.error(e)}}d.prototype={accumulate:function(e){return u(this,e)},on:function(e,t){var n=this;return e===",
+    "[kw:worker] ?this._worker.on(e,function(e){t.call(n,e.data,e.meta)}):this._worker.on(e,function(){r.delay(t,arguments,n)}),this},resume:function(){return r.delay(this._worker.resume,[],this._worker),this},pause:function(){return this._worker.pause(),this},toNodejsStream:function(e){if(r.checkSupport(",
+    "[kw:worker] ,e.data);if(this.leftOver&&this.leftOver.length){if(i.uint8array){var a=t;(t=new Uint8Array(a.length+this.leftOver.length)).set(this.leftOver,0),t.set(a,this.leftOver.length)}else t=this.leftOver.concat(t);this.leftOver=null}var o=function(e,t){var n;for((t||=e.length)>e.length&&(t=e.length),n=t-1;0<=n&&(192&e[n])==128;)n--;return n<0||n===0?t:n+s[e[n]]>t?n:t}(t),c=t;o!==t.length&&(i.uint8array?(c=t.subarray(0,o),this.leftOver=t.subarray(o,t.length)):(c=t.slice(0,o),this.leftOver=t.slice(o,t.length))),this.push({data:n.utf8decode(c),meta:e.meta})},l.prototype.flush=function(){this.leftOver&&this.leftOver.length&&(this.push({data:n.utf8decode(this.leftOver),meta:{}}),this.leftOver=null)},n.Utf8DecodeWorker=l,r.inherits(u,o),u.prototype.processChunk=function(e){this.push({data:n.utf8encode(e.data),meta:e.meta})},n.Utf8EncodeWorker=u},{",
+    "[kw:worker] ),t=this._decompressWorker();var a=!this._dataBinary;a&&!r&&(t=t.pipe(new o.Utf8EncodeWorker)),!a&&r&&(t=t.pipe(new o.Utf8DecodeWorker))}catch(e){(t=new c(",
+    "[kw:worker] ).toNodejsStream(t)},_compressWorker:function(e,t){if(this._data instanceof s&&this._data.compression.magic===e.magic)return this._data.getCompressedWorker();var n=this._decompressWorker();return this._dataBinary||(n=n.pipe(new o.Utf8EncodeWorker)),s.createWorkerFrom(n,e,t)},_decompressWorker:function(){return this._data instanceof s?this._data.getContentWorker():this._data instanceof c?this._data:new a(this._data)}};for(var l=[",
+    "[kw:worker] ?window:t===void 0?{}:t,n,r=!t.document&&!!t.postMessage,i=t.IS_PAPA_WORKER||!1,a={},o=0,s={};function c(e){this._handle=null,this._finished=!1,this._completed=!1,this._halted=!1,this._input=null,this._baseIndex=0,this._partialLine=",
+    "[kw:worker] ,this._handle.parse(r,this._baseIndex,!this._finished));if(!this._handle.paused()&&!this._handle.aborted()){if(e=a.meta.cursor,r=(this._finished||(this._partialLine=r.substring(e-this._baseIndex),this._baseIndex=e),a&&a.data&&(this._rowCount+=a.data.length),this._finished||this._config.preview&&this._rowCount>=this._config.preview),i)t.postMessage({results:a,workerId:s.WORKER_ID,finished:r});else if(x(this._config.chunk)&&!n){if(this._config.chunk(a,this._handle),this._handle.paused()||this._handle.aborted())return void(this._halted=!0);this._completeResults=a=void 0}return this._config.step||this._config.chunk||(this._completeResults.data=this._completeResults.data.concat(a.data),this._completeResults.errors=this._completeResults.errors.concat(a.errors),this._completeResults.meta=a.meta),this._completed||!r||!x(this._config.complete)||a&&a.meta.aborted||(this._config.complete(this._completeResults,this._input),this._completed=!0),r||a&&a.meta.paused||this._nextChunk(),a}this._halted=!0},this._sendError=function(e){x(this._config.error)?this._config.error(e):i&&this._config.error&&t.postMessage({workerId:s.WORKER_ID,error:e,finished:!1})}}function l(e){var t;(e||={}).chunkSize||(e.chunkSize=s.RemoteChunkSize),c.call(this,e),this._nextChunk=r?function(){this._readChunk(),this._chunkLoaded()}:function(){this._readChunk()},this.stream=function(e){this._input=e,this._nextChunk()},this._readChunk=function(){if(this._finished)this._chunkLoaded();else{if(t=new XMLHttpRequest,this._config.withCredentials&&(t.withCredentials=this._config.withCredentials),r||(t.onload=b(this._chunkLoaded,this),t.onerror=b(this._chunkError,this)),t.open(this._config.downloadRequestBody?",
+    "[kw:worker] +r,r++,o.has(e););o.add(e),i[t]=e,a[n]++,(c=c===null?{}:c)[e]=n}else a[n]=1,i[t]=n;o.add(n)}l=!0}return{data:C,errors:w,meta:{delimiter:t,linebreak:n,aborted:p,truncated:!!r,cursor:E+(h||0),renamedHeaders:c}}}function z(){i(R()),C=[],w=[]}},this.abort=function(){p=!0},this.getCharIndex=function(){return f}}function g(e){var t=e.data,n=a[t.workerId],r=!1;if(t.error)n.userError(t.error,t.file);else if(t.results&&t.results.data){var i={abort:function(){r=!0,_(t.workerId,{data:[],errors:[],meta:{aborted:!0}})},pause:v,resume:v};if(x(n.userStep)){for(var o=0;o<t.results.data.length&&(n.userStep({data:t.results.data[o],errors:t.results.errors,meta:t.results.meta},i),!r);o++);delete t.results}else x(n.userChunk)&&(n.userChunk(t.results,i,t.file),delete t.results)}t.finished&&!r&&_(t.workerId,t.results)}function _(e,t){var n=a[e];x(n.userComplete)&&n.userComplete(t),n.terminate(),delete a[e]}function v(){throw Error(",
+    "[kw:worker] }return s.parse=function(n,r){var i=(r||={}).dynamicTyping||!1;if(x(i)&&(r.dynamicTypingFunction=i,i={}),r.dynamicTyping=i,r.transform=!!x(r.transform)&&r.transform,!r.worker||!s.WORKERS_SUPPORTED)return i=null,s.NODE_STREAM_INPUT,typeof n==",
+    "[kw:worker] ?(n=(e=>e.charCodeAt(0)===65279?e.slice(1):e)(n),i=new(r.download?l:d)(r)):!0===n.readable&&x(n.read)&&x(n.on)?i=new f(r):(t.File&&n instanceof File||n instanceof Object)&&(i=new u(r)),i.stream(n);(i=(()=>{var n;return!!s.WORKERS_SUPPORTED&&(n=(()=>{var n=t.URL||t.webkitURL||null,r=e.toString();return s.BLOB_URL||=n.createObjectURL(new Blob([",
+    "[kw:worker] ) { return global; } return {}; })(); global.IS_PAPA_WORKER=true; ",
+    "[kw:worker] }))})(),(n=new t.Worker(n)).onmessage=g,n.id=o++,a[n.id]=n)})()).userStep=r.step,i.userChunk=r.chunk,i.userComplete=r.complete,i.userError=r.error,r.step=x(r.step),r.chunk=x(r.chunk),r.complete=x(r.complete),r.error=x(r.error),delete r.worker,i.postMessage({input:n,config:r,workerId:i.id})},s.unparse=function(e,t){var n=!1,r=!0,i=",
+    "[kw:worker] ,s.BYTE_ORDER_MARK],s.WORKERS_SUPPORTED=!r&&!!t.Worker,s.NODE_STREAM_INPUT=1,s.LocalChunkSize=10485760,s.RemoteChunkSize=5242880,s.DefaultDelimiter=",
+    "[kw:worker] )return void o()}var d=l.instanceConfig.complete;l.instanceConfig.complete=function(e){x(d)&&d(e,l.file,l.inputElem),o()},s.parse(l.file,l.instanceConfig)}}function o(){i.splice(0,1),a()}}),i&&(t.onmessage=function(e){e=e.data,s.WORKER_ID===void 0&&e&&(s.WORKER_ID=e.workerId),typeof e.input==",
+    "[kw:worker] ?t.postMessage({workerId:s.WORKER_ID,results:s.parse(e.input,e.config),finished:!0}):(t.File&&e.input instanceof File||e.input instanceof Object)&&(e=s.parse(e.input,e.config))&&t.postMessage({workerId:s.WORKER_ID,results:e,finished:!0})}),(l.prototype=Object.create(c.prototype)).constructor=l,(u.prototype=Object.create(c.prototype)).constructor=u,(d.prototype=Object.create(d.prototype)).constructor=d,(f.prototype=Object.create(c.prototype)).constructor=f,s})})),El=t(wl(),1),Dl=t(Tl(),1),Ol=9e15,kl=1e9,Al=",
+    "[kw:worker] );super(),this._readers=new WeakMap,this._blob=e,this._orchestrator=new Xg({maxCacheSize:t.maxCacheSize??8*2**20,maxWorkerCount:4,runWorker:this._runWorker.bind(this),prefetchProfile:Yg.fileSystem})}_retrieveSize(){let e=this._blob.size;return this._orchestrator.fileSize=e,e}_read(e,t){return this._orchestrator.read(e,t)}async _runWorker(e){let t=this._readers.get(e);for(t===void 0&&(t=(",
+    "[kw:worker] in this._blob)&&!of()?this._blob.slice(e.currentPos).stream().getReader():null,this._readers.set(e,t));e.currentPos<e.targetPos&&!e.aborted;)if(t){let{done:n,value:r}=await t.read();if(n)throw this._orchestrator.forgetWorker(e),Error(",
+    "[kw:worker] );if(e.aborted)break;this.onread?.(e.currentPos,e.currentPos+r.length),this._orchestrator.supplyWorkerData(e,r)}else{let t=await this._blob.slice(e.currentPos,e.targetPos).arrayBuffer();if(e.aborted)break;this.onread?.(e.currentPos,e.currentPos+t.byteLength),this._orchestrator.supplyWorkerData(e,new Uint8Array(t))}e.running=!1,e.aborted&&await t?.cancel()}_dispose(){this._orchestrator.dispose()}},Jg=.5*2**20,Yg={none:(e,t)=>({start:e,end:t}),fileSystem:(e,t)=>{let n=2**16;return e=Math.floor((e-n)/n)*n,t=Math.ceil((t+n)/n)*n,{start:e,end:t}},network:(e,t,n)=>{let r=2**16;e=Math.max(0,Math.floor((e-r)/r)*r);for(let r of n){let n=8*2**20,i=Math.max((r.startPos+r.targetPos)/2,r.targetPos-n);if(mf(e,t,i,r.targetPos)){let e=r.targetPos-r.startPos,i=Math.ceil((e+1)/n)*n,a=2**Math.ceil(Math.log2(e+1)),o=Math.min(a,i);t=Math.max(t,r.startPos+o)}}return t=Math.max(t,e+Jg),{start:e,end:t}}},Xg=class{constructor(e){this.options=e,this.fileSize=null,this.nextAge=0,this.workers=[],this.cache=[],this.currentCacheSize=0,this.disposed=!1}read(e,t){J(this.fileSize!==null);let n=this.options.prefetchProfile(e,t,this.workers),r=Math.max(n.start,0),i=Math.min(n.end,this.fileSize);J(r<=e&&t<=i);let a=null,o=Fd(this.cache,e,e=>e.start),s=o===-1?null:this.cache[o];s&&s.start<=e&&t<=s.end&&(s.age=this.nextAge++,a={bytes:s.bytes,view:s.view,offset:s.start});let c=Fd(this.cache,r,e=>e.start),l=a?null:new Uint8Array(t-e),u=0,d=r,f=[];if(c!==-1){for(let n=c;n<this.cache.length;n++){let a=this.cache[n];if(a.start>=i)break;if(a.end<=r)continue;let o=Math.max(r,a.start),s=Math.min(i,a.end);if(J(o<=s),d<o&&f.push({start:d,end:o}),d=s,l){let n=Math.max(e,a.start),r=Math.min(t,a.end);if(n<r){let t=n-e;l.set(a.bytes.subarray(n-a.start,r-a.start),t),t===u&&(u=r-e)}}a.age=this.nextAge++}d<i&&f.push({start:d,end:i})}else f.push({start:r,end:i});if(l&&u>=l.length&&(a={bytes:l,view:yd(l),offset:e}),f.length===0)return J(a),a;let{promise:p,resolve:m,reject:h}=Ld(),g=[];for(let n of f){let r=Math.max(e,n.start),i=Math.min(t,n.end);r===n.start&&i===n.end?g.push(n):r<i&&g.push({start:r,end:i})}for(let t of f){let n=l&&{start:e,bytes:l,holes:g,resolve:m,reject:h},r=!1;for(let e of this.workers)if(mf(t.start-2**17,t.start,e.currentPos,e.targetPos)){e.targetPos=Math.max(e.targetPos,t.end),r=!0,n&&!e.pendingSlices.includes(n)&&e.pendingSlices.push(n),e.running||this.runWorker(e);break}if(!r){let e=this.createWorker(t.start,t.end);n&&(e.pendingSlices=[n]),this.runWorker(e)}}return a||=(J(l),p.then(t=>({bytes:t,view:yd(t),offset:e}))),a}createWorker(e,t){let n={startPos:e,currentPos:e,targetPos:t,running:!1,aborted:this.disposed,pendingSlices:[],age:this.nextAge++};for(this.workers.push(n);this.workers.length>this.options.maxWorkerCount;){let e=0,t=this.workers[0];for(let n=1;n<this.workers.length;n++){let r=this.workers[n];r.age<t.age&&(e=n,t=r)}if(t.running&&t.pendingSlices.length>0)break;t.aborted=!0,this.workers.splice(e,1)}return n}runWorker(e){J(!e.running),J(e.currentPos<e.targetPos),e.running=!0,e.age=this.nextAge++,this.options.runWorker(e).catch(t=>{if(e.running=!1,e.pendingSlices.length>0)e.pendingSlices.forEach(e=>e.reject(t)),e.pendingSlices.length=0;else throw t})}supplyWorkerData(e,t){J(!e.aborted);let n=e.currentPos,r=n+t.length;this.insertIntoCache({start:n,end:r,bytes:t,view:yd(t),age:this.nextAge++}),e.currentPos+=t.length,e.targetPos=Math.max(e.targetPos,e.currentPos);for(let i=0;i<e.pendingSlices.length;i++){let a=e.pendingSlices[i],o=Math.max(n,a.start),s=Math.min(r,a.start+a.bytes.length);o<s&&a.bytes.set(t.subarray(o-n,s-n),o-a.start);for(let e=0;e<a.holes.length;e++){let t=a.holes[e];n<=t.start&&r>t.start&&(t.start=r),t.end<=t.start&&(a.holes.splice(e,1),e--)}a.holes.length===0&&(a.resolve(a.bytes),e.pendingSlices.splice(i,1),i--)}for(let t=0;t<this.workers.length;t++){let i=this.workers[t];e===i||i.running||mf(n,r,i.currentPos,i.targetPos)&&(this.workers.splice(t,1),t--)}}forgetWorker(e){let t=this.workers.indexOf(e);J(t!==-1),this.workers.splice(t,1)}insertIntoCache(e){if(this.options.maxCacheSize===0)return;let t=Fd(this.cache,e.start,e=>e.start)+1;if(t>0){let n=this.cache[t-1];if(n.end>=e.end)return;if(n.end>e.start){let r=new Uint8Array(e.end-n.start);r.set(n.bytes,0),r.set(e.bytes,e.start-n.start),this.currentCacheSize+=e.end-n.end,n.bytes=r,n.view=yd(r),n.end=e.end,t--,e=n}else this.cache.splice(t,0,e),this.currentCacheSize+=e.bytes.length}else this.cache.splice(t,0,e),this.currentCacheSize+=e.bytes.length;for(let n=t+1;n<this.cache.length;n++){let t=this.cache[n];if(e.end<=t.start)break;if(e.end>=t.end){this.cache.splice(n,1),this.currentCacheSize-=t.bytes.length,n--;continue}let r=new Uint8Array(t.end-e.start);r.set(e.bytes,0),r.set(t.bytes,t.start-e.start),this.currentCacheSize-=e.end-t.start,e.bytes=r,e.view=yd(r),e.end=t.end,this.cache.splice(n,1);break}for(;this.currentCacheSize>this.options.maxCacheSize;){let e=0,t=this.cache[0];for(let n=1;n<this.cache.length;n++){let r=this.cache[n];r.age<t.age&&(e=n,t=r)}if(this.currentCacheSize-t.bytes.length<=this.options.maxCacheSize)break;this.cache.splice(e,1),this.currentCacheSize-=t.bytes.length}}dispose(){for(let e of this.workers)e.aborted=!0;this.workers.length=0,this.cache.length=0,this.disposed=!0}};_f();var Zg=class{get disposed(){return this._disposed}constructor(e){if(this._demuxerPromise=null,this._format=null,this._disposed=!1,!e||typeof e!=",
+    "[kw:worker] ]},LA=n({hasBrowserEnv:()=>RA,hasStandardBrowserEnv:()=>BA,hasStandardBrowserWebWorkerEnv:()=>VA,navigator:()=>zA,origin:()=>HA}),RA=typeof window<",
+    "[kw:worker] ].indexOf(zA.product)<0),VA=typeof WorkerGlobalScope<",
+    "[kw:worker] &&self instanceof WorkerGlobalScope&&typeof self.importScripts==",
+    "[kw:worker] ))),$.isFormData(r)){if(UA.hasStandardBrowserEnv||UA.hasStandardBrowserWebWorkerEnv)s.setContentType(void 0);else if($.isFunction(r.getHeaders)){let e=r.getHeaders(),t=[",
+    "[kw:worker] ,onVnodeMounted:e=>{e.el&&(e.el.lazyPreloaderManaged=!0)}})])}};typeof WorkerGlobalScope<",
+    "[kw:worker] &&globalThis instanceof WorkerGlobalScope;var tR=()=>{};function nR(e,t){function n(...n){return new Promise((r,i)=>{Promise.resolve(e(()=>t.apply(this,n),{fn:t,thisArg:this,args:n})).then(r).catch(i)})}return n}function rR(e,t={}){let n,r,i=tR,a=e=>{clearTimeout(e),i(),i=tR},o;return s=>{let c=ue(e),l=ue(t.maxWait);return n&&a(n),c<=0||l!==void 0&&l<=0?(r&&=(a(r),void 0),Promise.resolve(s())):new Promise((e,u)=>{i=t.rejectOnCancel?u:e,o=s,l&&!r&&(r=setTimeout(()=>{n&&a(n),r=void 0,e(o())},l)),n=setTimeout(()=>{r&&a(r),r=void 0,e(s())},c)})}}function iR(e,t=200,n={}){return nR(rR(t,n),e)}var aR=[",
+    "[kw:worker] ,setup(e){let t=A([sI,rI,cI,nI]),n=A([sI,hR,cI,nI]),r=new Worker(",
+    "[kw:wasm] )}),n}function Ko(e){return[e.screenX,e.screenY]}function qo(){let e=A([-1,-1]);return{wasMoved(t){let n=Ko(t);return e.value[0]===n[0]&&e.value[1]===n[1]?!1:(e.value=n,!0)},update(t){e.value=Ko(t)}}}function Jo({container:e,accept:t,walk:n,enabled:r}){f(()=>{let i=e.value;if(!i||r!==void 0&&!r.value)return;let a=wo(e);if(!a)return;let o=Object.assign(e=>t(e),{acceptNode:t}),s=a.createTreeWalker(i,NodeFilter.SHOW_ELEMENT,o,!1);for(;s.nextNode();)n(s.currentNode)})}var Yo=(e=>(e[e.None=0]=",
+    "[kw:wasm] })}))});function m(e){e.preventDefault(),e.button===fs.Left&&(s.value||(i.selectOption(a),Bo()||requestAnimationFrame(()=>K(i.inputRef)?.focus({preventScroll:!0})),i.mode.value===0&&i.closeCombobox()))}function h(){var t;if(e.disabled||(t=i.virtual.value)!=null&&t.disabled(e.value))return i.goToOption(gs.Nothing);let n=i.calculateIndex(e.value);i.goToOption(gs.Specific,n)}let g=qo();function _(e){g.update(e)}function x(t){var n;if(!g.wasMoved(t)||e.disabled||(n=i.virtual.value)!=null&&n.disabled(e.value)||l.value)return;let r=i.calculateIndex(e.value);i.goToOption(gs.Specific,r,0)}function S(t){var n;g.wasMoved(t)&&(e.disabled||(n=i.virtual.value)!=null&&n.disabled(e.value)||l.value&&(i.optionsPropsRef.value.hold||i.goToOption(gs.Nothing)))}return()=>{let{disabled:r}=e,i={active:l.value,selected:u.value,disabled:r};return Zo({ourProps:{id:a,ref:o,role:",
+    "[kw:wasm] })})});function p(t){if(e.disabled)return t.preventDefault();a.select(e.value),a.mode.value===0&&(a.closeListbox(),y(()=>K(a.buttonRef)?.focus({preventScroll:!0})))}function m(){if(e.disabled)return a.goToOption(gs.Nothing);a.goToOption(gs.Specific,i)}let h=qo();function g(e){h.update(e)}function _(t){h.wasMoved(t)&&(e.disabled||s.value||a.goToOption(gs.Specific,i,0))}function x(t){h.wasMoved(t)&&(e.disabled||s.value&&a.goToOption(gs.Nothing))}return()=>{let{disabled:r}=e,a={active:s.value,selected:c.value,disabled:r},{value:l,disabled:u,...d}=e;return Zo({ourProps:{id:i,ref:o,role:",
+    "[kw:wasm] application/wasm",
+    "[kw:wasm] wasm"
+  ]
+}
