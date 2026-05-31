@@ -9,6 +9,10 @@ interface Props {
   onError: (msg: string) => void
   onChooseVideo: (v: VideoFile | null) => void
   onClearData: () => void
+  /** 工作模式：仅视频 / 视频+外置数据。决定显示哪些槽位 */
+  mode?: 'video-only' | 'video+data'
+  /** 切换模式的回调（会清空所有已加载内容） */
+  onModeChange?: (mode: 'video-only' | 'video+data') => void
 }
 
 /**
@@ -18,7 +22,7 @@ interface Props {
  *   - 未选：虚线按钮「+ 选择文件」
  *   - 已选：文件名 · 元数据 · 关闭按钮
  */
-export default function LibraryPanel({ data, video, onParsed, onError, onChooseVideo, onClearData }: Props) {
+export default function LibraryPanel({ data, video, onParsed, onError, onChooseVideo, onClearData, mode = 'video+data', onModeChange }: Props) {
   const dataInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
@@ -79,24 +83,28 @@ export default function LibraryPanel({ data, video, onParsed, onError, onChooseV
         {/* 标题 */}
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
           <FolderIcon className="h-5 w-5" />
-          <span>媒体与数据</span>
+          <span>{mode === 'video-only' ? '视频' : '媒体与数据'}</span>
         </div>
 
         <p className="text-xs leading-relaxed text-gray-66">
-          上传同一段比赛的视频（MP4/MOV）和数据文件（.vbo / .dlap）。
+          {mode === 'video-only'
+            ? '上传带 GPS 的视频（GoPro 等），自动提取 GPS / 速度并分圈。'
+            : '上传同一段比赛的视频（MP4/MOV）和外置数据文件（.vbo / .dlap），可手动或智能对齐。'}
         </p>
 
         <div className="h-px bg-[#303232]" />
 
-        {/* 数据文件槽 */}
-        <FileSlot
-          label="数据文件"
-          accept=".vbo / .dlap"
-          name={data ? data.meta.model || '已加载' : ''}
-          meta={data ? `${(data.meta.duration / 60000).toFixed(2)} min · ${data.samples.length.toLocaleString()} pts` : ''}
-          onChoose={() => dataInputRef.current?.click()}
-          onClear={onClearData}
-        />
+        {/* 数据文件槽：仅 video+data 模式显示 */}
+        {mode === 'video+data' && (
+          <FileSlot
+            label="数据文件"
+            accept=".vbo / .dlap"
+            name={data ? data.meta.model || '已加载' : ''}
+            meta={data ? `${(data.meta.duration / 60000).toFixed(2)} min · ${data.samples.length.toLocaleString()} pts` : ''}
+            onChoose={() => dataInputRef.current?.click()}
+            onClear={onClearData}
+          />
+        )}
 
         {/* 视频文件槽 */}
         <FileSlot
@@ -108,8 +116,48 @@ export default function LibraryPanel({ data, video, onParsed, onError, onChooseV
           onClear={clearVideo}
         />
 
-        {/* 占位区：撑满剩余空间，未来放数据摘要 / 圈数列表 */}
-        <div className="mt-2 flex-1" />
+        {/* 模式 A 下若已加载视频但未含 GPS，给提示 */}
+        {mode === 'video-only' && video && !data && (
+          <div className="text-[11px] text-amber-300/90 bg-amber-900/20 border border-amber-500/30 rounded px-3 py-2 leading-relaxed">
+            ⚠ 该视频未检测到内嵌 GPS。若是 DJI 运动相机（无 GPS），请切换到「视频 + 外置 GPS」模式上传 .dlap / .vbo。
+          </div>
+        )}
+
+        {/* 占位区：撑满剩余空间，把模式切换推到底部 */}
+        <div className="flex-1" />
+
+        {/* 模式切换（放底部，避免上方布局抖动） */}
+        {onModeChange && (
+          <div>
+            <div className="text-[11px] text-gray-66 mb-1.5 uppercase tracking-wider">工作模式</div>
+            <div className="grid grid-cols-2 gap-1 bg-black-18 rounded p-0.5">
+              <button
+                onClick={() => onModeChange('video-only')}
+                className={`text-xs py-2 px-2 rounded transition leading-tight ${
+                  mode === 'video-only'
+                    ? 'bg-[#404243] text-white font-semibold'
+                    : 'text-gray-66 hover:text-white'
+                }`}
+                title="仅上传带 GPS 的视频（GoPro 等）"
+              >
+                <div>带 GPS 的视频</div>
+                <div className="text-[10px] opacity-70 mt-0.5">GoPro</div>
+              </button>
+              <button
+                onClick={() => onModeChange('video+data')}
+                className={`text-xs py-2 px-2 rounded transition leading-tight ${
+                  mode === 'video+data'
+                    ? 'bg-[#404243] text-white font-semibold'
+                    : 'text-gray-66 hover:text-white'
+                }`}
+                title="上传视频 + 外置 GPS 数据（DLAP / VBO）"
+              >
+                <div>视频 + 外置 GPS</div>
+                <div className="text-[10px] opacity-70 mt-0.5">DJI / 任意 + DLAP</div>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )

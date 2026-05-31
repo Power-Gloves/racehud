@@ -38,6 +38,29 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
 
+  // 工作模式：'video-only' = 带GPS的视频；'video+data' = 视频 + 外置GPS
+  type Mode = 'video-only' | 'video+data'
+  const [mode, setMode] = useState<Mode>('video-only')
+
+  /** 切换模式：清空所有已加载内容，重置状态 */
+  function switchMode(next: Mode) {
+    if (next === mode) return
+    if (video?.url) URL.revokeObjectURL(video.url)
+    setVideo(null)
+    setVideoMeta(null)
+    setVideoCurrentTime(0)
+    setData(null)
+    setError(null)
+    setSyncMsg(null)
+    setAutoLapSource(null)
+    setAutoLapPos(null)
+    setFinishLine(null)
+    setVideoOffsetMs(0)
+    setDataOffsetMs(0)
+    setPlayheadT(0)
+    setMode(next)
+  }
+
   // 自动分圈状态（仅 GoPro 等无圈号数据源用；DLAP 自带圈号不走这里）
   // - autoLapPos：起跑线沿轨迹相对位置 0~1。null 表示用算法自动选
   // - finishLine：当前起跑线两端经纬度，给 MiniMap 画线用
@@ -298,13 +321,14 @@ export default function App() {
             {error && <span className="ml-auto text-red-400 text-xs">{error}</span>}
           </header>
 
-          {/* 主内容：三栏 + 底部时间轴。设计稿固定宽度下铺满 */}
           <div className="flex-1 flex flex-col gap-3 p-3 min-h-0">
             {/* 三栏：加宽左右栏、压窄中间，减少视频左右黑边 */}
             <div className="grid gap-3 min-h-0 flex-1 grid-cols-[440px_1fr_460px]">
               {/* 左：媒体与数据 */}
               <div className="min-w-0 min-h-0">
                 <LibraryPanel
+                  mode={mode}
+                  onModeChange={switchMode}
                   data={data}
                   video={video}
                   onParsed={setData}
