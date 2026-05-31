@@ -28,14 +28,8 @@ export default function LibraryPanel({ data, video, onParsed, onError, onChooseV
 
   async function uploadTelemetry(file: File) {
     try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch('/api/parse-telemetry', { method: 'POST', body: form })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `HTTP ${res.status}`)
-      }
-      onParsed(await res.json())
+      const { parseTelemetryFile } = await import('../telemetry')
+      onParsed(await parseTelemetryFile(file))
       onError('')
     } catch (e: unknown) {
       onError(`解析失败：${e instanceof Error ? e.message : String(e)}`)

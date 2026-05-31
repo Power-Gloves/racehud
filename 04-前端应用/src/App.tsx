@@ -275,15 +275,9 @@ export default function App() {
     for (const file of files) {
       const ext = file.name.toLowerCase().split('.').pop() || ''
       if (ext === 'vbo' || ext === 'dlap') {
-        const form = new FormData()
-        form.append('file', file)
         try {
-          const res = await fetch('/api/parse-telemetry', { method: 'POST', body: form })
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}))
-            throw new Error(err.error || `HTTP ${res.status}`)
-          }
-          setData(await res.json())
+          const { parseTelemetryFile } = await import('./telemetry')
+          setData(await parseTelemetryFile(file))
           setError(null)
         } catch (err: unknown) {
           setError(`解析失败：${err instanceof Error ? err.message : String(err)}`)

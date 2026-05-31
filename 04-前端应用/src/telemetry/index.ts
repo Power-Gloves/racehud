@@ -4,10 +4,30 @@
 import { DjiExtractor } from './djiExtractor'
 import { GoProExtractor } from './goproExtractor'
 import { alignAccel, accelFromSamples } from './align'
+import { parseVbo } from './vbo'
+import { parseDlap } from './dlap'
 import type { VideoTelemetryExtractor, VideoTelemetry, AlignResult, AccelSignal } from './types'
+import type { ParsedVbo } from '../types'
 
 export * from './types'
-export { alignAccel, accelFromSamples }
+export { alignAccel, accelFromSamples, parseVbo, parseDlap }
+
+/**
+ * 统一前端解析 .vbo / .dlap 文件
+ * 按扩展名派发到对应解析器（纯前端，无后端依赖）。
+ */
+export async function parseTelemetryFile(file: File): Promise<ParsedVbo> {
+  const ext = file.name.toLowerCase().split('.').pop() || ''
+  if (ext === 'vbo') {
+    const text = await file.text()
+    return parseVbo(text)
+  }
+  if (ext === 'dlap') {
+    const buf = await file.arrayBuffer()
+    return parseDlap(buf)
+  }
+  throw new Error(`不支持的扩展名: ${ext}`)
+}
 
 /** 已注册的视频遥测提取器（按优先级探测） */
 const EXTRACTORS: VideoTelemetryExtractor[] = [

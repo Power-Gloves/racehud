@@ -68,11 +68,11 @@ export class GoProExtractor implements VideoTelemetryExtractor {
     // 滑动窗口读
     const WIN = 8 * 1024 * 1024
     let winStart = -1
-    let winBuf = new Uint8Array(0)
+    let winBuf: Uint8Array = new Uint8Array(0)
     const getSample = async (o: number, len: number): Promise<Uint8Array> => {
       if (winStart < 0 || o < winStart || o + len > winStart + winBuf.length) {
         winStart = o
-        winBuf = await readBytes(file, o, Math.max(WIN, len))
+        winBuf = await readBytes(file, o, Math.max(WIN, len)) as Uint8Array
       }
       return winBuf.subarray(o - winStart, o - winStart + len)
     }
