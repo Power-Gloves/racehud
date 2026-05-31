@@ -38,6 +38,27 @@ export interface VideoTelemetry {
   durationSec: number
   /** 样本总数 */
   sampleCount: number
+  /**
+   * 完整遥测样本（仅当 hasGps 时有意义）。
+   * 归一到项目统一 Sample 模型，可直接当数据源喂 HUD（场景3：纯视频无外部数据）。
+   * 字段与 ../types.ts 的 Sample 对齐（t/lat/lng/speed/heading/altitude/加速度/G/distance）。
+   */
+  samples?: VideoSample[]
+}
+
+/** 视频内嵌遥测的统一样本（字段对齐项目 Sample 模型的子集） */
+export interface VideoSample {
+  t: number          // 绝对 UTC 毫秒（GoPro GPS 有 UTC 时间）
+  lat: number
+  lng: number
+  speed: number      // km/h
+  heading: number    // 度
+  altitude: number   // 米
+  sats: number
+  acceleration: number
+  gLong: number
+  gLat: number
+  distance: number
 }
 
 /** 自动对齐结果 */

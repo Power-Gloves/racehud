@@ -2,6 +2,7 @@
  * 遥测/自动对齐统一出口
  */
 import { DjiExtractor } from './djiExtractor'
+import { GoProExtractor } from './goproExtractor'
 import { alignAccel, accelFromSamples } from './align'
 import type { VideoTelemetryExtractor, VideoTelemetry, AlignResult, AccelSignal } from './types'
 
@@ -10,8 +11,8 @@ export { alignAccel, accelFromSamples }
 
 /** 已注册的视频遥测提取器（按优先级探测） */
 const EXTRACTORS: VideoTelemetryExtractor[] = [
+  new GoProExtractor(),
   new DjiExtractor(),
-  // 后续：new GoProExtractor(),
 ]
 
 /** 探测并提取视频内嵌遥测，返回 null 表示该视频无可识别遥测 */

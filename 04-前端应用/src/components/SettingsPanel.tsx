@@ -14,6 +14,11 @@ interface Props {
   exportEnabled?: boolean
   themeId: string
   onThemeChange: (id: string) => void
+  /** 自动分圈起跑线位置 0~1（仅自动分圈数据源时启用），null = 算法自动 */
+  autoLapPos?: number | null
+  onAutoLapPosChange?: (pos: number | null) => void
+  /** 自动分圈是否可用（视频含 GPS 时） */
+  autoLapEnabled?: boolean
 }
 
 /**
@@ -22,6 +27,7 @@ interface Props {
 export default function SettingsPanel({
   settings, onChange, onExport, exportEnabled,
   themeId, onThemeChange,
+  autoLapPos, onAutoLapPosChange, autoLapEnabled,
 }: Props) {
   return (
     <div className="bg-bg rounded-lg p-4 flex flex-col gap-4 h-full w-full overflow-y-auto text-sm border border-[#404243]">
@@ -36,6 +42,34 @@ export default function SettingsPanel({
       </Field>
 
       <div className="border-t border-[#2a2a2a]" />
+
+      {autoLapEnabled && onAutoLapPosChange && (
+        <>
+          <Collapsible title="起跑线位置" defaultOpen={false}>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={0}
+                max={1000}
+                value={Math.round((autoLapPos ?? 0.5) * 1000)}
+                onChange={(e) => onAutoLapPosChange(parseInt(e.target.value, 10) / 1000)}
+                className="flex-1 accent-orange-400"
+              />
+              <button
+                onClick={() => onAutoLapPosChange(null)}
+                className="text-[10px] px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-66 hover:text-white shrink-0"
+                title="重置为算法自动选择"
+              >
+                Auto
+              </button>
+            </div>
+            <div className="text-[10px] text-gray-66 mt-1">
+              {autoLapPos == null ? '算法自动选择' : `沿轨迹 ${Math.round(autoLapPos * 100)}%`}
+            </div>
+          </Collapsible>
+          <div className="border-t border-[#2a2a2a]" />
+        </>
+      )}
 
       <Field label="车型">
         <Segment
@@ -87,6 +121,31 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="text-[11px] text-gray-66 mb-1.5 uppercase tracking-wider">{label}</div>
       {children}
+    </div>
+  )
+}
+
+function Collapsible({ title, defaultOpen = false, children }: {
+  title: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-[11px] text-gray-66 hover:text-white uppercase tracking-wider transition w-full"
+      >
+        <svg
+          width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+          className={`transition-transform ${open ? 'rotate-90' : ''}`}
+        >
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+        <span>{title}</span>
+      </button>
+      {open && <div className="mt-2">{children}</div>}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ParsedVbo, WidgetContext } from './types'
+import { ParsedVbo, Sample, VboMeta, WidgetContext } from './types'
 import { VideoFile } from './components/VideoUploader'
 import PreviewStage from './components/PreviewStage'
 import Timeline from './components/Timeline'
@@ -37,6 +37,17 @@ export default function App() {
   // 自动对齐状态
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
+  // 自动分圈状态（仅 GoPro 等无圈号数据源用；DLAP 自带圈号不走这里）
+  // - autoLapPos：起跑线沿轨迹相对位置 0~1。null 表示用算法自动选
+  // - finishLine：当前起跑线两端经纬度，给 MiniMap 画线用
+  const [autoLapPos, setAutoLapPos] = useState<number | null>(null)
+  const [finishLine, setFinishLine] = useState<{ a: { lat: number; lng: number }; b: { lat: number; lng: number } } | null>(null)
+  // 自动分圈数据源：保存原始 samples（视频提取出的），调整滑块时重新分圈而无需重新提取视频
+  const [autoLapSource, setAutoLapSource] = useState<{
+    rawSamples: Sample[]
+    meta: VboMeta
+  } | null>(null)
 
   /**
    * 自动对齐：提取视频内嵌加速度，与 GPS 数据加速度互相关求时间偏移，
@@ -163,8 +174,75 @@ export default function App() {
       meta: data.meta,
       playheadT: gpsTimeAtPlayhead,  // widget 的"当前时刻"用 GPS 真实时刻
       laps, bestLap, currentLap,
+      finishLine: finishLine ?? undefined,
     }
-  }, [data, currentSample, gpsTimeAtPlayhead, laps, bestLap, currentLap])
+  }, [data, currentSample, gpsTimeAtPlayhead, laps, bestLap, currentLap, finishLine])
+
+  /**
+   * 应用自动分圈：基于原始 samples + 当前 autoLapPos 重新分圈。
+   * 输出 ParsedVbo（含 lapNum/lapTimeInLap）+ 终点线坐标，灌进 data/finishLine。
+   */
+  async function reapplyAutoLap(rawSamples: Sample[], meta: VboMeta, position: number | null) {
+    const { autoDetectLaps } = await import('./telemetry/autoLap')
+    // 注意 autoDetectLaps 会原地改 sample 的 lapNum/lapTimeInLap，
+    // 重算时先深拷贝一层，避免历史污染（lapNum 残留）
+    const samples: Sample[] = rawSamples.map(s => ({ ...s, lapNum: undefined, lapTimeInLap: undefined }))
+    const lapInfo = autoDetectLaps(samples, { trackPosition: position ?? null })
+    setData({ meta, samples })
+    setFinishLine(lapInfo.finishLine)
+    return lapInfo
+  }
+
+  // 当用户拖动滑块改变 autoLapPos 时，重新分圈
+  useEffect(() => {
+    if (!autoLapSource) return
+    reapplyAutoLap(autoLapSource.rawSamples, autoLapSource.meta, autoLapPos).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLapPos, autoLapSource])
+
+  // 选择视频：建 blob URL +（若无外部数据）探测视频内嵌 GPS 遥测当数据源
+  async function handleVideoChosen(v: VideoFile) {
+    setVideo(v)
+    setVideoMeta(null)
+    setVideoCurrentTime(0)
+
+    // 若已有外部 DLAP/VBO 数据，不覆盖
+    if (data) return
+
+    // 探测视频内嵌遥测
+    try {
+      setSyncMsg('正在检测视频内嵌遥测…')
+      const { extractVideoTelemetry } = await import('./telemetry')
+      const vt = await extractVideoTelemetry(v.file, (r) =>
+        setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`))
+      if (vt?.hasGps && vt.samples && vt.samples.length > 1) {
+        // 视频自带 GPS → 组装 + 自动分圈（场景3）
+        const samples = vt.samples as unknown as Sample[]
+        const meta: VboMeta = {
+          startTime: samples[0].t,
+          endTime: samples[samples.length - 1].t,
+          duration: samples[samples.length - 1].t - samples[0].t,
+          model: vt.model,
+          source: 'gopro',
+          columns: ['lat', 'lng', 'speed', 'altitude', 'heading'],
+          sampleRate: Math.round((samples.length - 1) / Math.max(1, (samples[samples.length - 1].t - samples[0].t) / 1000)),
+          count: samples.length,
+        }
+        // 保存原始 samples 用于后续重新分圈
+        setAutoLapSource({ rawSamples: samples, meta })
+        setAutoLapPos(null) // 用算法自动选位置
+        const lapInfo = await reapplyAutoLap(samples, meta, null)
+        const lapMsg = lapInfo.lapCount > 0 ? `，自动分出 ${lapInfo.lapCount} 圈（可在右栏微调起跑线）` : ''
+        setSyncMsg(`✓ 已从 ${vt.model} 提取内嵌 GPS（${samples.length} 点）${lapMsg}`)
+      } else if (vt && !vt.hasGps) {
+        setSyncMsg(`${vt.model} 内嵌加速度已就绪，上传 GPS 数据后可点「智能对齐」`)
+      } else {
+        setSyncMsg(null)
+      }
+    } catch {
+      setSyncMsg(null)
+    }
+  }
 
   // 拖拽文件到页面任意位置
   async function handleDrop(e: React.DragEvent) {
@@ -188,11 +266,8 @@ export default function App() {
           setError(`解析失败：${err instanceof Error ? err.message : String(err)}`)
         }
       } else if (file.type.startsWith('video/') || ext === 'mp4' || ext === 'mov') {
-        // 调用 VideoUploader 内部一致的逻辑：建 blob URL
         const url = URL.createObjectURL(file)
-        setVideo({ file, url, name: file.name, size: file.size })
-        setVideoMeta(null)
-        setVideoCurrentTime(0)
+        await handleVideoChosen({ file, url, name: file.name, size: file.size })
       }
     }
   }
@@ -234,8 +309,22 @@ export default function App() {
                   video={video}
                   onParsed={setData}
                   onError={setError}
-                  onChooseVideo={(v) => { setVideo(v); setVideoMeta(null); setVideoCurrentTime(0) }}
-                  onClearData={() => setData(null)}
+                  onChooseVideo={(v) => {
+                    if (v) handleVideoChosen(v)
+                    else {
+                      setVideo(null); setVideoMeta(null); setVideoCurrentTime(0)
+                      // 清视频也清自动分圈源（视频是数据来源）
+                      if (autoLapSource) {
+                        setAutoLapSource(null); setAutoLapPos(null); setFinishLine(null); setData(null)
+                      }
+                    }
+                  }}
+                  onClearData={() => {
+                    setData(null)
+                    setAutoLapSource(null)
+                    setAutoLapPos(null)
+                    setFinishLine(null)
+                  }}
                 />
               </div>
 
@@ -262,6 +351,9 @@ export default function App() {
                   exportEnabled={!!data && !!video}
                   themeId={themeId}
                   onThemeChange={setThemeId}
+                  autoLapEnabled={!!autoLapSource}
+                  autoLapPos={autoLapPos}
+                  onAutoLapPosChange={setAutoLapPos}
                 />
               </div>
             </div>

@@ -10,7 +10,7 @@ import type { WidgetProps } from './index'
  *   3. VBO 无 lap 信息时回退到全部 samples
  */
 export default function MiniMap({ ctx }: WidgetProps) {
-  const { samples, current, bestLap } = ctx
+  const { samples, current, bestLap, finishLine } = ctx
 
   // 选取一圈样本作为赛道底图。
   // 按 lapNum 字段过滤。判据：点数最接近"正常单圈点数（中位数）"的圈——
@@ -91,11 +91,28 @@ export default function MiniMap({ ctx }: WidgetProps) {
 
   const [cx, cy] = current ? project(current.lat, current.lng) : [NaN, NaN]
 
+  // 终点线两端投影坐标
+  const finish = useMemo(() => {
+    if (!finishLine) return null
+    const [ax, ay] = project(finishLine.a.lat, finishLine.a.lng)
+    const [bx, by] = project(finishLine.b.lat, finishLine.b.lng)
+    return { ax, ay, bx, by }
+  }, [finishLine, project])
+
   return (
     <div className="hud-card flex flex-col p-1.5">
       <div className="hud-label px-1">Track</div>
       <svg viewBox="-1.05 -1.05 2.1 2.1" className="flex-1 w-full mt-0.5">
         <path d={path} fill="none" stroke="var(--hud-text-dim)" strokeWidth="0.05" strokeLinejoin="round" strokeLinecap="round" />
+        {/* 终点线 */}
+        {finish && (
+          <line
+            x1={finish.ax} y1={finish.ay} x2={finish.bx} y2={finish.by}
+            stroke="var(--hud-warn, #f87171)"
+            strokeWidth="0.06"
+            strokeLinecap="round"
+          />
+        )}
         {Number.isFinite(cx) && (
           <>
             <circle cx={cx} cy={cy} r="0.12" fill="none" stroke="var(--hud-accent)" strokeWidth="0.035" opacity="0.6" />

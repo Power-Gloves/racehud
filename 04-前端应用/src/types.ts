@@ -68,4 +68,6 @@ export interface WidgetContext {
   bestLap: LapInfo | null
   /** 派生：当前圈 */
   currentLap: LapInfo | null
+  /** 自动分圈终点线两端经纬度（仅自动分圈数据源有，DLAP 没有） */
+  finishLine?: { a: { lat: number; lng: number }; b: { lat: number; lng: number } }
 }
