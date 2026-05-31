@@ -30,6 +30,10 @@ interface Props {
   laps: LapInfo[]
   /** 跳转到某圈起点 */
   onJumpToLap: (lap: LapInfo | null) => void
+  /** 自动对齐回调（可选） */
+  onAutoSync?: () => void
+  /** 是否正在自动对齐 */
+  syncing?: boolean
 }
 
 /**
@@ -67,6 +71,7 @@ export default function Timeline({
   currentSample, videoName,
   locked, onToggleLock,
   laps, onJumpToLap,
+  onAutoSync, syncing,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(0)
@@ -182,7 +187,7 @@ export default function Timeline({
   const offsetSec = (videoOffsetMs - dataOffsetMs) / 1000
 
   return (
-    <div className="bg-[#1A1A1A] rounded-lg overflow-hidden border border-[#303030]">
+    <div className="bg-[#1A1A1A] rounded-lg overflow-hidden border border-[#303030] h-full flex flex-col">
       {/* 顶部读数栏 */}
       <div className="flex items-center justify-between px-3 py-2 bg-[#222] border-b border-[#303030]">
         <div className="flex items-center gap-4 text-xs">
@@ -205,6 +210,16 @@ export default function Timeline({
           )}
         </div>
         <div className="flex items-center gap-2 text-xs">
+          {onAutoSync && (
+            <button
+              onClick={onAutoSync}
+              disabled={syncing}
+              className="px-2.5 py-1 rounded flex items-center gap-1.5 bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-wait transition"
+              title="智能对齐：用视频内嵌加速度与 GPS 数据自动匹配时间"
+            >
+              <SyncIcon spinning={syncing} /> {syncing ? '对齐中…' : '智能对齐'}
+            </button>
+          )}
           <button
             onClick={onToggleLock}
             className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition ${
@@ -230,8 +245,7 @@ export default function Timeline({
       <div
         ref={containerRef}
         onWheel={onWheel}
-        className="relative select-none"
-        style={{ height: 152 }}
+        className="relative select-none flex-1 min-h-[140px]"
       >
         {containerW > 0 && (
           <>
@@ -328,17 +342,6 @@ export default function Timeline({
           onJumpToLap={onJumpToLap}
         />
       )}
-
-      {/* 底部提示 */}
-      <div className="px-3 py-1.5 text-[11px] text-slate-500 bg-[#181818] border-t border-[#303030] flex items-center justify-between">
-        <span>
-          {locked
-            ? <>🔒 拖任一处 → 滚动浏览（视频与数据保持同步）</>
-            : <>🔓 拖 <span className="text-orange-300">GPS</span> 或 <span className="text-cyan-300">视频</span> 轨道 → 调整对齐 → 调好后点「锁定」</>
-          }
-          {' '}· 滚轮缩放 · 点击标尺跳转
-        </span>
-      </div>
     </div>
   )
 }
@@ -472,6 +475,15 @@ function formatLap(s: number): string {
   const m = Math.floor(s / 60)
   const sec = s - m * 60
   return `${m}:${sec.toFixed(2).padStart(5, '0')}`
+}
+
+function SyncIcon({ spinning }: { spinning?: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={spinning ? 'animate-spin' : ''}>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  )
 }
 
 function LockIcon() {

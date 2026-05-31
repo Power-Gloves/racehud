@@ -29,11 +29,11 @@ export const DEFAULT_LAYOUT: HudLayout = {
   id: 'default',
   name: '默认布局',
   placements: [
-    { widgetId: 'miniMap', anchor: 'tl', offsetX: 0.02, offsetY: 0.02, width: 0.10, height: 0.16, visible: true },
-    { widgetId: 'lapInfo', anchor: 'tc', offsetX: 0,    offsetY: 0.02, width: 0.22, height: 0.07, visible: true },
-    { widgetId: 'lapList', anchor: 'tr', offsetX: 0.02, offsetY: 0.02, width: 0.10, height: 0.22, visible: true },
-    { widgetId: 'speed',   anchor: 'bl', offsetX: 0.02, offsetY: 0.04, width: 0.11, height: 0.10, visible: true },
-    { widgetId: 'gforce',  anchor: 'br', offsetX: 0.02, offsetY: 0.04, width: 0.10, height: 0.16, visible: true },
+    { widgetId: 'miniMap', anchor: 'tl', offsetX: 0.02, offsetY: 0.02, width: 0.13, height: 0.20, visible: true },
+    { widgetId: 'lapInfo', anchor: 'tc', offsetX: 0,    offsetY: 0.02, width: 0.30, height: 0.10, visible: true },
+    { widgetId: 'lapList', anchor: 'tr', offsetX: 0.02, offsetY: 0.02, width: 0.14, height: 0.30, visible: true },
+    { widgetId: 'speed',   anchor: 'bl', offsetX: 0.02, offsetY: 0.04, width: 0.14, height: 0.16, visible: true },
+    { widgetId: 'gforce',  anchor: 'br', offsetX: 0.02, offsetY: 0.04, width: 0.13, height: 0.20, visible: true },
   ],
 }
 

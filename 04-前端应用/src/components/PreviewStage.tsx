@@ -156,7 +156,10 @@ const PreviewStage = forwardRef<HTMLVideoElement, Props>(
           </div>
         </div>
 
-        {/* 2. 视频 + HUD overlay 区 */}
+        {/* 2. 视频 + HUD overlay 区。
+            关键：stage 内部按视频原生分辨率（如 1920×1080）固定渲染，
+            外层 transform scale 缩到当前显示大小。这样 widget 在所有显示尺寸下
+            视觉比例严格一致——预览效果 = 全屏效果 = 导出效果（WYSIWYG）。 */}
         <div
           ref={stageWrapRef}
           className="flex-auto overflow-hidden min-h-0 flex items-center justify-center p-3"
@@ -170,21 +173,43 @@ const PreviewStage = forwardRef<HTMLVideoElement, Props>(
               transition: 'transform 300ms',
             }}
           >
-            {video && (
-              <video
-                ref={ref}
-                src={video.url}
-                className="absolute inset-0 w-full h-full"
-                onLoadedMetadata={(e) => {
-                  const v = e.currentTarget
-                  onLoaded({ duration: v.duration, width: v.videoWidth, height: v.videoHeight })
-                }}
-                onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
-                onClick={togglePlay}
-              />
-            )}
-            {/* HUD overlay 严格贴在视频盒子上，跟随真实视频比例 */}
-            {hudOverlay}
+            {/* 内部画布：固定 1920 宽（跟视频真实分辨率脱钩），所有 widget 在 1920 坐标系里画。
+                视频元素 absolute fill 自适应；这样 1080p / 4K 视频 HUD 视觉一致。 */}
+            {(() => {
+              const INNER_W = 1920
+              const innerH = ratio > 0 ? INNER_W / ratio : 1080
+              const displayScale = stage.w > 0 ? stage.w / INNER_W : 0
+              return (
+                <div
+                  style={{
+                    width: INNER_W,
+                    height: innerH,
+                    transform: `scale(${displayScale})`,
+                    transformOrigin: 'top left',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                  }}
+                >
+                  {video && (
+                    <video
+                      ref={ref}
+                      src={video.url}
+                      className="absolute inset-0 w-full h-full"
+                      onLoadedMetadata={(e) => {
+                        const v = e.currentTarget
+                        onLoaded({ duration: v.duration, width: v.videoWidth, height: v.videoHeight })
+                      }}
+                      onTimeUpdate={(e) => onTimeUpdate(e.currentTarget.currentTime)}
+                      onClick={togglePlay}
+                    />
+                  )}
+                  {/* HUD overlay 在 1920 坐标系里按 placement 百分比定位 */}
+                  {hudOverlay}
+                </div>
+              )
+            })()}
+
             {!video && !hasData && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-66 gap-2">
                 <div className="text-3xl">⊕</div>

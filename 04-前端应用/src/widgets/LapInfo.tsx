@@ -26,7 +26,7 @@ function Field({ label, value, className = '' }: { label: string; value: string;
   return (
     <div className="flex flex-col">
       <div className="hud-label">{label}</div>
-      <div className={`hud-value text-[1.3rem] mt-0.5 ${className}`}>{value}</div>
+      <div className={`hud-value text-[2rem] mt-1 ${className}`}>{value}</div>
     </div>
   )
 }

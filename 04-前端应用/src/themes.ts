@@ -33,18 +33,24 @@ export const THEMES: Theme[] = [
     name: '极简',
     preview: { bg: '#000000', border: '#ffffff20', text: '#ffffff', accent: '#22d3ee' },
     vars: {
-      '--hud-bg': 'rgba(0, 0, 0, 0.55)',
-      '--hud-border': 'rgba(255, 255, 255, 0.10)',
-      '--hud-border-w': '1px',
-      '--hud-radius': '6px',
+      // 渐变底片：顶部透明 → 底部淡黑，制造"信息贴在视频上"的浮层感
+      '--hud-bg': 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.55) 100%)',
+      '--hud-border': 'transparent',
+      '--hud-border-w': '0',
+      '--hud-radius': '4px',
       '--hud-text': '#ffffff',
-      '--hud-text-dim': '#94a3b8',
+      '--hud-text-dim': 'rgba(226, 232, 240, 0.85)',
       '--hud-accent': '#22d3ee',
-      '--hud-good': '#10b981',
-      '--hud-warn': '#f43f5e',
+      '--hud-good': '#34d399',
+      '--hud-warn': '#fb7185',
       '--hud-font-num': '"JetBrains Mono", ui-monospace, monospace',
       '--hud-shadow': 'none',
-      '--hud-blur': '4px',
+      '--hud-blur': '0px',
+      // 文字描边阴影：在任何视频背景上都可读
+      '--hud-text-shadow': '0 1px 2px rgba(0,0,0,0.85), 0 0 4px rgba(0,0,0,0.6)',
+      '--hud-value-shadow': '0 2px 4px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.55)',
+      // 左侧 accent 线（青色细条），赛车 HUD 经典手法
+      '--hud-accent-line-w': '2.5px',
     },
   },
   {

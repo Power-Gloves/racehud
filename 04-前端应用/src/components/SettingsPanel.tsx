@@ -24,7 +24,7 @@ export default function SettingsPanel({
   themeId, onThemeChange,
 }: Props) {
   return (
-    <div className="bg-bg rounded-lg p-4 flex flex-col gap-4 h-full overflow-y-auto text-sm border border-[#404243]">
+    <div className="bg-bg rounded-lg p-4 flex flex-col gap-4 h-full w-full overflow-y-auto text-sm border border-[#404243]">
       <div className="flex items-center gap-2 text-white font-semibold uppercase tracking-wider text-[13px]">
         <span className="inline-block w-1.5 h-4 bg-primary rounded-sm" />
         设置

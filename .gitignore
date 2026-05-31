@@ -15,3 +15,6 @@ dist/
 
 # 临时执行文件
 .agents/skills/playwright-skill/.temp-execution-*.js
+
+# 临时分析产物（laptimer 反编译 dump，仅本地参考用）
+.agents/skills/playwright-skill/_autosync_dump/

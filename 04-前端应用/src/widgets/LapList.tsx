@@ -8,7 +8,7 @@ export default function LapList({ ctx }: WidgetProps) {
   return (
     <div className="hud-card flex flex-col">
       <div className="hud-label mb-1">Laps</div>
-      <div className="flex-1 overflow-auto space-y-0.5 text-[11px]" style={{ fontFamily: 'var(--hud-font-num)' }}>
+      <div className="flex-1 overflow-auto space-y-1 text-[18px]" style={{ fontFamily: 'var(--hud-font-num)' }}>
         {laps.length === 0 && <div className="hud-label opacity-60">—</div>}
         {laps.map(l => {
           const cls = l.isCurrent
