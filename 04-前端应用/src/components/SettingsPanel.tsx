@@ -12,6 +12,12 @@ interface Props {
   onChange: (s: ExportSettings) => void
   onExport: () => void
   exportEnabled?: boolean
+  /** 是否正在导出 */
+  exporting?: boolean
+  /** 导出进度 0~1 */
+  exportProgress?: number
+  /** 取消导出 */
+  onCancelExport?: () => void
   themeId: string
   onThemeChange: (id: string) => void
   /** 自动分圈起跑线位置 0~1（仅自动分圈数据源时启用），null = 算法自动 */
@@ -26,6 +32,7 @@ interface Props {
  */
 export default function SettingsPanel({
   settings, onChange, onExport, exportEnabled,
+  exporting, exportProgress, onCancelExport,
   themeId, onThemeChange,
   autoLapPos, onAutoLapPosChange, autoLapEnabled,
 }: Props) {
@@ -102,16 +109,41 @@ export default function SettingsPanel({
 
       <div className="flex-1" />
 
-      <button
-        onClick={onExport}
-        disabled={!exportEnabled}
-        className="w-full py-3 bg-primary hover:opacity-90 disabled:bg-black-18 disabled:text-gray-66 text-white font-semibold rounded text-base transition uppercase tracking-wider"
-      >
-        Export All Laps
-      </button>
-      <p className="text-[10px] text-gray-66 text-center -mt-2">
-        每段前后会附加 5 秒以确保完整圈
-      </p>
+      {exporting ? (
+        <div className="space-y-2">
+          {/* 进度条 */}
+          <div className="relative h-3 rounded-full bg-black-18 overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 bg-primary transition-all"
+              style={{ width: `${(exportProgress ?? 0) * 100}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-cyan-300">
+              导出中… {((exportProgress ?? 0) * 100).toFixed(1)}%
+            </span>
+            <button
+              onClick={onCancelExport}
+              className="px-3 py-1 text-xs rounded bg-[#404243] hover:bg-[#505253] text-white transition"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={onExport}
+            disabled={!exportEnabled}
+            className="w-full py-3 bg-primary hover:opacity-90 disabled:bg-black-18 disabled:text-gray-66 text-white font-semibold rounded text-base transition uppercase tracking-wider"
+          >
+            导出带 HUD 的视频
+          </button>
+          <p className="text-[10px] text-gray-66 text-center -mt-2">
+            导出在浏览器本地完成，不上传任何数据
+          </p>
+        </>
+      )}
     </div>
   )
 }

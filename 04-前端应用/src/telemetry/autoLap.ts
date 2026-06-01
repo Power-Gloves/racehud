@@ -19,6 +19,7 @@ export interface LapSample {
   speed: number   // km/h
   lapNum?: number
   lapTimeInLap?: number
+  bestCompare?: number  // 实时与最佳圈相同位置的秒差（< 0 = 快，> 0 = 慢）
 }
 
 export interface AutoLapResult {
@@ -152,7 +153,102 @@ export function autoDetectLaps<T extends LapSample>(
     s.lapTimeInLap = Math.max(0, s.t - lapStartT)
   }
 
+  // 5. 实时秒差（bestCompare）：用"本圈累计距离"对齐到最佳圈
+  computeBestCompare(samples, xs, ys, crossings)
+
   return { crossings, lapCount: crossings.length - 1, refIndex: refIdx, finishLine }
+}
+
+/**
+ * 给每个 sample 写入 bestCompare。
+ * 算法：
+ *   1. 找最快完整圈（圈时最短）
+ *   2. 算这一圈每个 sample 的"距起跑线累计米数 → 用时"映射表
+ *   3. 对当前圈每个 sample，算自己跑了多远（米），到最佳圈对应距离查"应该用多少秒"
+ *   4. 当前用时（lapTimeInLap）- 最佳应用时 = bestCompare
+ */
+function computeBestCompare<T extends LapSample>(
+  samples: T[],
+  xs: Float64Array,
+  ys: Float64Array,
+  crossings: number[],
+): void {
+  if (crossings.length < 2) return
+
+  // 按 lapNum 分组采样索引
+  type LapIdx = { lapNum: number; indices: number[]; lapTime: number }
+  const lapMap = new Map<number, number[]>()
+  for (let i = 0; i < samples.length; i++) {
+    const n = samples[i].lapNum ?? 0
+    if (n <= 0) continue
+    if (!lapMap.has(n)) lapMap.set(n, [])
+    lapMap.get(n)!.push(i)
+  }
+  const laps: LapIdx[] = []
+  for (const [num, indices] of lapMap) {
+    if (indices.length < 10) continue
+    const first = samples[indices[0]]
+    const last = samples[indices[indices.length - 1]]
+    const lapTime = (last.t - first.t) / 1000 + (first.lapTimeInLap ?? 0) / 1000
+    laps.push({ lapNum: num, indices, lapTime })
+  }
+  if (laps.length === 0) return
+
+  // 找最快圈（用中位数附近过滤离群圈，跟 useLaps 一致）
+  const times = laps.map(l => l.lapTime).sort((a, b) => a - b)
+  const median = times[Math.floor(times.length / 2)]
+  const valid = laps.filter(l => l.lapTime >= median * 0.7 && l.lapTime <= median * 1.3)
+  const pool = valid.length > 0 ? valid : laps
+  const best = pool.reduce((b, l) => l.lapTime < b.lapTime ? l : b, pool[0])
+
+  // 算最佳圈的"距离 → 用时"映射（按本圈起点累计米）
+  const bestDist: number[] = []   // 累计米
+  const bestTime: number[] = []   // 本圈用时（秒）
+  let acc = 0
+  let prevIdx = -1
+  for (const idx of best.indices) {
+    if (prevIdx >= 0) {
+      const dx = xs[idx] - xs[prevIdx]
+      const dy = ys[idx] - ys[prevIdx]
+      acc += Math.hypot(dx, dy)
+    }
+    bestDist.push(acc)
+    bestTime.push((samples[idx].lapTimeInLap ?? 0) / 1000)
+    prevIdx = idx
+  }
+  if (bestDist.length < 2) return
+
+  /** 在最佳圈映射表里查指定距离对应的用时（线性插值） */
+  function bestTimeAtDistance(d: number): number {
+    if (d <= bestDist[0]) return bestTime[0]
+    if (d >= bestDist[bestDist.length - 1]) return bestTime[bestTime.length - 1]
+    // 二分
+    let lo = 0, hi = bestDist.length - 1
+    while (lo + 1 < hi) {
+      const mid = (lo + hi) >> 1
+      if (bestDist[mid] <= d) lo = mid
+      else hi = mid
+    }
+    const r = (d - bestDist[lo]) / (bestDist[hi] - bestDist[lo] || 1)
+    return bestTime[lo] + (bestTime[hi] - bestTime[lo]) * r
+  }
+
+  // 对每一圈（含最佳本身）算每个 sample 的 bestCompare
+  for (const lap of laps) {
+    let dist = 0
+    let prev = -1
+    for (const idx of lap.indices) {
+      if (prev >= 0) {
+        const dx = xs[idx] - xs[prev]
+        const dy = ys[idx] - ys[prev]
+        dist += Math.hypot(dx, dy)
+      }
+      const curUsed = (samples[idx].lapTimeInLap ?? 0) / 1000
+      const bestUsed = bestTimeAtDistance(dist)
+      samples[idx].bestCompare = curUsed - bestUsed
+      prev = idx
+    }
+  }
 }
 
 // 线段相交

@@ -6,7 +6,8 @@ interface Props {
 }
 
 /**
- * HUD 主题切换器：色块 chip，点击预览主题配色，激活主题加 ring
+ * HUD 主题切换器：色块预览 + 名称，点击切换。
+ * 主题渲染本身已迁到 Canvas，这里只展示色块缩略图。
  */
 export default function ThemePicker({ themeId, onChange }: Props) {
   return (
@@ -24,7 +25,6 @@ export default function ThemePicker({ themeId, onChange }: Props) {
             }`}
             title={t.name}
           >
-            {/* 配色色块预览 */}
             <div
               className="h-7 rounded flex items-center justify-center"
               style={{
@@ -34,13 +34,10 @@ export default function ThemePicker({ themeId, onChange }: Props) {
               }}
             >
               <div className="flex items-center gap-1">
-                <span className="text-[10px] font-bold tabular-nums" style={{ fontFamily: t.vars['--hud-font-num'] }}>
-                  88
-                </span>
+                <span className="text-[10px] font-bold tabular-nums">88</span>
                 <span className="w-1 h-1 rounded-full" style={{ background: t.preview.accent }} />
               </div>
             </div>
-            {/* 名称 */}
             <div className={`text-xs mt-1 truncate ${active ? 'text-white font-semibold' : 'text-slate-200'}`}>
               {t.name}
             </div>

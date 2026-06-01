@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Open+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Aldrich&family=Open+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -59,67 +59,3 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
-
-/* ============== HUD Widget 主题化 utility ============== */
-/* 所有 widget 用这些 class，只通过 CSS 变量切换风格 */
-
-@layer components {
-  .hud-card {
-    width: 100%;
-    height: 100%;
-    background: var(--hud-bg);
-    border: var(--hud-border-w) solid var(--hud-border);
-    border-radius: var(--hud-radius);
-    color: var(--hud-text);
-    backdrop-filter: blur(var(--hud-blur));
-    -webkit-backdrop-filter: blur(var(--hud-blur));
-    box-shadow: var(--hud-shadow);
-    padding: 10px 14px;
-    overflow: hidden;
-    line-height: 1.1;
-    position: relative;
-  }
-
-  /* 可选左侧 accent 线（主题里用 --hud-accent-line-w 控制宽度，0 = 无） */
-  .hud-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 12%;
-    bottom: 12%;
-    width: var(--hud-accent-line-w, 0px);
-    background: var(--hud-accent);
-    border-radius: 0 999px 999px 0;
-    pointer-events: none;
-  }
-
-  .hud-label {
-    font-size: 14px;
-    color: var(--hud-text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    line-height: 1;
-    text-shadow: var(--hud-text-shadow, none);
-  }
-
-  .hud-value {
-    font-family: var(--hud-font-num);
-    font-variant-numeric: tabular-nums;
-    color: var(--hud-text);
-    font-weight: 700;
-    line-height: 1;
-    text-shadow: var(--hud-value-shadow, var(--hud-text-shadow, none));
-  }
-
-  .hud-unit {
-    font-size: 13px;
-    color: var(--hud-text-dim);
-    text-transform: uppercase;
-    text-shadow: var(--hud-text-shadow, none);
-  }
-
-  .hud-accent { color: var(--hud-accent); }
-  .hud-good   { color: var(--hud-good); }
-  .hud-warn   { color: var(--hud-warn); }
-}
-

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ParsedVbo, Sample, VboMeta, WidgetContext } from './types'
+import { ParsedVbo, Sample, VboMeta } from './types'
 import { VideoFile } from './components/VideoUploader'
 import PreviewStage from './components/PreviewStage'
 import Timeline from './components/Timeline'
 import LibraryPanel from './components/LibraryPanel'
 import SettingsPanel, { useDefaultSettings } from './components/SettingsPanel'
-import HudOverlay, { DEFAULT_LAYOUT } from './components/HudOverlay'
+import HudCanvas from './components/HudCanvas'
 import { interpolateSampleAt, useLaps } from './hooks/useLaps'
-import { DEFAULT_THEME_ID, getTheme } from './themes'
+import { DEFAULT_THEME_ID, getTheme, type HudFrame } from './themes'
 import { autoSync, type AutoSyncResult } from './telemetry'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
@@ -26,7 +26,6 @@ export default function App() {
   const [dataOffsetMs, setDataOffsetMs] = useState<number>(0)
   const [playheadT, setPlayheadT] = useState<number>(0)
   const [locked, setLocked] = useState<boolean>(true)
-  const [layout] = useState(DEFAULT_LAYOUT)
   const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID)
   const [settings, setSettings] = useDefaultSettings()
 
@@ -37,6 +36,57 @@ export default function App() {
   // 自动对齐状态
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
+  // 导出状态
+  const [exporting, setExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
+  const exportAbortRef = useRef<AbortController | null>(null)
+
+  /** 导出当前视频（带 HUD） */
+  async function handleExport() {
+    if (!video || !data || !videoMeta) return
+    if (exporting) return
+    const { exportVideo, downloadBlob } = await import('./export/exporter')
+    setExporting(true)
+    setExportProgress(0)
+    setSyncMsg('正在导出，请勿关闭页面…')
+    const abort = new AbortController()
+    exportAbortRef.current = abort
+    try {
+      const blob = await exportVideo({
+        videoFile: video.file,
+        videoOffsetMs,
+        dataOffsetMs,
+        data,
+        laps,
+        bestLap,
+        finishLine: finishLine ?? undefined,
+        unit: settings.unit,
+        theme,
+        range: {
+          startSec: 0,
+          endSec: videoMeta.duration,
+          filename: `racehud_${Date.now()}.mp4`,
+        },
+        signal: abort.signal,
+        onProgress: setExportProgress,
+      })
+      downloadBlob(blob, `racehud_${Date.now()}.mp4`)
+      setSyncMsg('✓ 导出完成')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('取消')) setSyncMsg('已取消导出')
+      else setSyncMsg(`导出失败：${msg}`)
+    } finally {
+      setExporting(false)
+      setExportProgress(0)
+      exportAbortRef.current = null
+    }
+  }
+
+  function cancelExport() {
+    exportAbortRef.current?.abort()
+  }
 
   // 工作模式：'video-only' = 带GPS的视频；'video+data' = 视频 + 外置GPS
   type Mode = 'video-only' | 'video+data'
@@ -189,17 +239,23 @@ export default function App() {
 
   const { laps, bestLap, currentLap } = useLaps(data?.samples ?? [], gpsTimeAtPlayhead)
 
-  const widgetCtx: WidgetContext | null = useMemo(() => {
+  // HUD 帧上下文（喂给主题的 drawHud）
+  // 内部画布固定 1920×1080（与 PreviewStage 保持一致）
+  const HUD_W = 1920, HUD_H = 1080
+  const hudFrame: HudFrame | null = useMemo(() => {
     if (!data) return null
     return {
+      width: HUD_W,
+      height: HUD_H,
       current: currentSample,
       samples: data.samples,
       meta: data.meta,
-      playheadT: gpsTimeAtPlayhead,  // widget 的"当前时刻"用 GPS 真实时刻
+      playheadT: gpsTimeAtPlayhead,
       laps, bestLap, currentLap,
       finishLine: finishLine ?? undefined,
+      unit: settings.unit,
     }
-  }, [data, currentSample, gpsTimeAtPlayhead, laps, bestLap, currentLap, finishLine])
+  }, [data, currentSample, gpsTimeAtPlayhead, laps, bestLap, currentLap, finishLine, settings.unit])
 
   /**
    * 应用自动分圈：基于原始 samples + 当前 autoLapPos 重新分圈。
@@ -356,7 +412,7 @@ export default function App() {
                   onLoaded={setVideoMeta}
                   onTimeUpdate={setVideoCurrentTime}
                   hasData={!!data}
-                  hudOverlay={widgetCtx ? <HudOverlay ctx={widgetCtx} layout={layout} theme={theme} /> : null}
+                  hudOverlay={hudFrame ? <HudCanvas theme={theme} frame={hudFrame} designWidth={HUD_W} designHeight={HUD_H} /> : null}
                 />
               </div>
 
@@ -365,8 +421,11 @@ export default function App() {
                 <SettingsPanel
                   settings={settings}
                   onChange={setSettings}
-                  onExport={() => alert('导出功能后续实现')}
-                  exportEnabled={!!data && !!video}
+                  onExport={handleExport}
+                  exportEnabled={!!data && !!video && !exporting}
+                  exporting={exporting}
+                  exportProgress={exportProgress}
+                  onCancelExport={cancelExport}
                   themeId={themeId}
                   onThemeChange={setThemeId}
                   autoLapEnabled={!!autoLapSource}
