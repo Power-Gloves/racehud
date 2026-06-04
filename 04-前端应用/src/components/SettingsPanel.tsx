@@ -85,52 +85,46 @@ export default function SettingsPanel({
                 </button>
               </div>
 
-              {/* 精确调整 */}
+              {/* 精确调整 - 全部改为按钮，突出常用的±0.05% */}
               {autoLapPos != null && (
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => onAutoLapPosChange(Math.max(0, autoLapPos - 0.01))}
-                      className="px-2 py-1 text-xs bg-primary hover:opacity-90 text-white rounded"
-                      title="向前 1%"
-                    >
-                      -1%
-                    </button>
+                <div className="space-y-2">
+                  {/* 第一行：±0.05% 大按钮（最常用） */}
+                  <div className="flex items-center justify-center gap-3">
                     <button
                       onClick={() => onAutoLapPosChange(Math.max(0, autoLapPos - 0.0005))}
-                      className="px-2 py-1 text-xs bg-primary/70 hover:opacity-90 text-white rounded"
+                      className="flex-1 px-4 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-400 text-white rounded-lg transition shadow-sm"
                       title="向前 0.05%"
                     >
-                      -0.05%
+                      ← 0.05%
                     </button>
-                  </div>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.05}
-                    value={Math.round(autoLapPos * 2000) / 20}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value)
-                      if (!isNaN(val)) onAutoLapPosChange(Math.max(0, Math.min(1, val / 100)))
-                    }}
-                    className="w-16 px-2 py-1 text-xs text-center bg-[#2a2a2a] text-white rounded border border-gray-600 focus:border-primary focus:outline-none"
-                  />
-                  <span className="text-xs text-gray-66">%</span>
-                  <div className="flex gap-1">
+                    <div className="px-4 py-2 text-sm font-mono font-bold text-cyan-300 bg-[#1a1a1a] rounded-lg border border-cyan-500/40 min-w-[80px] text-center">
+                      {(Math.round(autoLapPos * 2000) / 20).toFixed(2)}%
+                    </div>
                     <button
                       onClick={() => onAutoLapPosChange(Math.min(1, autoLapPos + 0.0005))}
-                      className="px-2 py-1 text-xs bg-primary/70 hover:opacity-90 text-white rounded"
+                      className="flex-1 px-4 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-400 text-white rounded-lg transition shadow-sm"
                       title="向后 0.05%"
                     >
-                      +0.05%
+                      0.05% →
                     </button>
+                  </div>
+                  
+                  {/* 第二行：±1% 小按钮（粗调） */}
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => onAutoLapPosChange(Math.max(0, autoLapPos - 0.01))}
+                      className="px-3 py-1.5 text-xs bg-[#404243] hover:bg-[#505253] text-slate-300 rounded transition"
+                      title="向前 1%"
+                    >
+                      ← 1%
+                    </button>
+                    <span className="text-xs text-slate-500">粗调</span>
                     <button
                       onClick={() => onAutoLapPosChange(Math.min(1, autoLapPos + 0.01))}
-                      className="px-2 py-1 text-xs bg-primary hover:opacity-90 text-white rounded"
+                      className="px-3 py-1.5 text-xs bg-[#404243] hover:bg-[#505253] text-slate-300 rounded transition"
                       title="向后 1%"
                     >
-                      +1%
+                      1% →
                     </button>
                   </div>
                 </div>

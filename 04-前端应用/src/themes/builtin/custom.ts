@@ -437,7 +437,10 @@ function drawCustomLapList(
   const maxLaps = 5
   
   // 只显示当前圈及之前的圈(使用之前定义的currentLapNum)
-  const relevantLaps = valid.filter(l => l.lapNum <= currentLapNum)
+  // 修复: 如果currentLapNum为0(在圈与圈之间),显示所有圈
+  const relevantLaps = currentLapNum > 0 
+    ? valid.filter(l => l.lapNum <= currentLapNum)
+    : valid  // currentLapNum为0时显示所有圈
   
   // 已完成的圈(不包括当前圈)
   const completedLaps = relevantLaps.filter(l => !l.isCurrent && l.lapTime > 0)
