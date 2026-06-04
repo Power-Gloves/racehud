@@ -903,7 +903,7 @@ function drawGTrails(ctx: CanvasRenderingContext2D, currentTime: number) {
 }
 
 /** 弯道检测：基于速度变化率（更可靠） */
-function detectCornerAndRecordSpeed(speed: number, gLat: number, currentTime: number, lapNum: number, lat: number, lng: number) {
+function detectCornerAndRecordSpeed(speed: number, gLat: number, currentTime: number, _lapNum: number, lat: number, lng: number) {
   // 维护速度历史
   recentSpeedHistory.push({ speed, time: currentTime })
   recentSpeedHistory = recentSpeedHistory.filter(h => currentTime - h.time < SPEED_HISTORY_DURATION)
@@ -1047,7 +1047,7 @@ function drawCornerSpeedLabels(
   const labelX = cx + r * 1.2  // 从1.5改为1.2，更靠近速度表
   const labelW = r * 2.2
   const labelH = r * 0.35
-  const labelGap = r * 0.15
+  // const labelGap = r * 0.15  // 未使用
   
   const maxLabelY = cy - r * 0.4
   const minLabelY = cy + r * 0.2
