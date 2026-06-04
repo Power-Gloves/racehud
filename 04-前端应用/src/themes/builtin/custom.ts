@@ -140,8 +140,9 @@ function drawCustomMiniMap(
   const step = Math.max(1, Math.floor(trackSamples.length / 200))
   ctx.save()
   ctx.strokeStyle = skin.goodColor || '#ffffff'
-  ctx.lineWidth = 2.5
+  ctx.lineWidth = 6  // 从4改为6
   ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'  // 添加圆角端点
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 6 }
   ctx.beginPath()
   for (let i = 0; i < trackSamples.length; i += step) {
@@ -152,7 +153,7 @@ function drawCustomMiniMap(
   ctx.stroke()
   ctx.restore()
 
-  // 终点线（方格旗样式 - 棋盘格）
+  // 绘制终点线（方格旗样式 - 棋盘格）
   if (frame.finishLine) {
     const [ax, ay] = proj(frame.finishLine.a.lat, frame.finishLine.a.lng)
     const [bx, by] = proj(frame.finishLine.b.lat, frame.finishLine.b.lng)
@@ -208,7 +209,24 @@ function drawCustomMiniMap(
     ctx.restore()
   }
 
-  // 当前位置点（青色）
+  // 绘制刹车点标记（红色圆点） - 暂时禁用，后续优化
+  // ctx.save()
+  // for (const bp of brakePoints) {
+  //   const [bx, by] = proj(bp.lat, bp.lng)
+  //   ctx.beginPath()
+  //   ctx.arc(bx, by, 8, 0, 2 * Math.PI)
+  //   ctx.fillStyle = 'rgba(244, 67, 54, 0.5)'
+  //   ctx.fill()
+  //   ctx.beginPath()
+  //   ctx.arc(bx, by, 4, 0, 2 * Math.PI)
+  //   ctx.fillStyle = '#f44336'
+  //   ctx.shadowColor = '#f44336'
+  //   ctx.shadowBlur = 6
+  //   ctx.fill()
+  // }
+  // ctx.restore()
+
+  // 当前位置点（青色）- 最后绘制，确保在最上层
   if (frame.current) {
     const [cx, cy] = proj(frame.current.lat, frame.current.lng)
     ctx.save()
@@ -227,6 +245,56 @@ function drawCustomMiniMap(
 let lastLapNum = 0
 let scrollAnimStartTime = 0
 const SCROLL_DURATION = 500 // 滚动动画持续500ms
+
+// G力极值追踪（用于渐消失尾迹效果）
+interface GTrail {
+  x: number
+  y: number
+  timestamp: number
+  type: 'left' | 'right' | 'accel' | 'brake'
+  gValue: number
+}
+
+const gTrails: GTrail[] = [] // 存储所有极值痕迹
+const TRAIL_FADE_DURATION = 2000 // 痕迹2秒后完全消失
+const MAX_TRAILS_PER_TYPE = 5 // 每个方向最多保留5个痕迹
+
+// 每个方向的当前圈极值
+let currentLapMaxLeft = 0
+let currentLapMaxRight = 0
+let currentLapMaxAccel = 0
+let currentLapMaxBrake = 0
+let lastGLat = 0
+let lastGLong = 0
+let lastRecordedLapNum = 0
+
+// 弯道速度记录
+interface CornerSpeed {
+  maxSpeed: number  // 入弯前最高速度
+  minSpeed: number  // 弯中最低速度
+  timestamp: number // 出弯时间戳
+  isActive: boolean // 是否还在弯道中
+  brakePoint?: { lat: number, lng: number } // 刹车点位置
+}
+
+let currentCorner: CornerSpeed | null = null
+let lastCornerDisplay: CornerSpeed | null = null
+const CORNER_DISPLAY_DURATION = 3000 // 出弯后显示3秒
+const CORNER_G_THRESHOLD = 0.8 // 横向G力阈值
+const SPEED_DROP_RATE_THRESHOLD = -8 // 速度下降率阈值 (km/h/s)，负值表示减速
+const CORNER_MIN_DURATION = 1000 // 弯道最短持续时间1秒
+const CORNER_SPEED_DROP = 15 // 总速度下降阈值（km/h）
+let inBrakingPhase = false // 是否在刹车阶段
+let inCornerState = false
+let cornerStartTime = 0
+let brakingStartSpeed = 0
+let lastSpeed = 0
+let lastSpeedTime = 0
+let recentSpeedHistory: Array<{speed: number, time: number}> = [] // 速度历史
+const SPEED_HISTORY_DURATION = 5000
+
+// 存储当前圈的所有刹车点
+let brakePoints: Array<{ lat: number, lng: number, timestamp: number }> = []
 
 /** 自定义圈速列表绘制（完全按照设计图） */
 function drawCustomLapList(
@@ -452,6 +520,21 @@ function drawCustomSpeedGauge(
   const speed = frame.current?.speed ?? 0
   const gLong = frame.current?.gLong ?? 0  // 纵向G力
   const gLat = frame.current?.gLat ?? 0    // 横向G力
+  const currentLapNum = frame.current?.lapNum ?? 0
+  const currentTime = frame.playheadT
+  
+  // 弯道检测：基于速度变化率和横向G力
+  detectCornerAndRecordSpeed(speed, gLat, currentTime, currentLapNum, frame.current?.lat ?? 0, frame.current?.lng ?? 0)
+  
+  // 检测圈数变化,重置当前圈极值和刹车点
+  if (currentLapNum !== lastRecordedLapNum && lastRecordedLapNum > 0) {
+    currentLapMaxLeft = 0
+    currentLapMaxRight = 0
+    currentLapMaxAccel = 0
+    currentLapMaxBrake = 0
+    brakePoints = [] // 新圈清空刹车点
+  }
+  lastRecordedLapNum = currentLapNum
   
   // 计算最高和最低速度
   let maxSpd = 0
@@ -549,10 +632,53 @@ function drawCustomSpeedGauge(
   ctx.stroke()
   ctx.restore()
 
-  // G力点（青色双层圆圈）
+  // 更新极值并记录痕迹
   const MAX_G = 3
-  const gLatNorm = Math.max(-1, Math.min(1, -gLat / MAX_G))     // 横向G力 -> X轴（反向）
-  const gLongNorm = Math.max(-1, Math.min(1, -gLong / MAX_G))   // 纵向G力 -> Y轴（反向）
+  const gLatNorm = -gLat / MAX_G  // 横向G力（反向）
+  const gLongNorm = -gLong / MAX_G // 纵向G力（反向）
+  
+  // 检测极值并添加痕迹
+  const THRESHOLD = 0.1 // 极值变化阈值（避免抖动）
+  
+  // 左转极值（gLat为负，球往右）
+  if (gLat < 0 && Math.abs(gLat) > currentLapMaxLeft + THRESHOLD) {
+    currentLapMaxLeft = Math.abs(gLat)
+    const trailX = cx + gLatNorm * gBallR * 0.8
+    const trailY = cy + gLongNorm * gBallR * 0.8
+    addGTrail(trailX, trailY, currentTime, 'left', Math.abs(gLat))
+  }
+  
+  // 右转极值（gLat为正，球往左）
+  if (gLat > 0 && Math.abs(gLat) > currentLapMaxRight + THRESHOLD) {
+    currentLapMaxRight = Math.abs(gLat)
+    const trailX = cx + gLatNorm * gBallR * 0.8
+    const trailY = cy + gLongNorm * gBallR * 0.8
+    addGTrail(trailX, trailY, currentTime, 'right', Math.abs(gLat))
+  }
+  
+  // 加速极值（gLong为负）
+  if (gLong < 0 && Math.abs(gLong) > currentLapMaxAccel + THRESHOLD) {
+    currentLapMaxAccel = Math.abs(gLong)
+    const trailX = cx + gLatNorm * gBallR * 0.8
+    const trailY = cy + gLongNorm * gBallR * 0.8
+    addGTrail(trailX, trailY, currentTime, 'accel', Math.abs(gLong))
+  }
+  
+  // 刹车极值（gLong为正）
+  if (gLong > 0 && Math.abs(gLong) > currentLapMaxBrake + THRESHOLD) {
+    currentLapMaxBrake = Math.abs(gLong)
+    const trailX = cx + gLatNorm * gBallR * 0.8
+    const trailY = cy + gLongNorm * gBallR * 0.8
+    addGTrail(trailX, trailY, currentTime, 'brake', Math.abs(gLong))
+  }
+  
+  lastGLat = gLat
+  lastGLong = gLong
+  
+  // 绘制渐消失的极值痕迹
+  drawGTrails(ctx, currentTime)
+
+  // G力点（青色双层圆圈）- 在痕迹之上绘制
   const dotX = cx + gLatNorm * gBallR * 0.8
   const dotY = cy + gLongNorm * gBallR * 0.8
   
@@ -574,41 +700,53 @@ function drawCustomSpeedGauge(
   ctx.fill()
   ctx.restore()
 
-  // G力数值已在底部R-值标签中显示,中心不再重复显示
+  // G力总值显示在G球中心（按设计图要求）- 暂时隐藏
   const gTotal = Math.sqrt(gLong * gLong + gLat * gLat)
-  // 注释掉中心的G力数值显示
   // ctx.save()
-  // const gFontSize = Math.round(r * 0.3)
+  // const gFontSize = Math.round(r * 0.35)
   // ctx.font = `700 ${gFontSize}px ${skin.numFont}`
-  // ctx.fillStyle = skin.textColor
+  // ctx.fillStyle = '#ffffff'
   // ctx.textAlign = 'center'
   // ctx.textBaseline = 'middle'
   // if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 4 }
-  // ctx.fillText(`${gTotal.toFixed(1)}G`, cx, cy + gFontSize * 0.3)
+  // ctx.fillText(`${gTotal.toFixed(1)}G`, cx, cy)
   // ctx.restore()
 
-  // R-值标签（G力球底部外侧，带半透明背景）
+  // R-值标签（G力球底部居中位置，浅灰色背景，白色文字）
   ctx.save()
-  const rLabelSize = Math.round(r * 0.18)  // 从0.24改为0.18
-  ctx.font = `700 ${rLabelSize}px "Rajdhani", sans-serif`
+  const rLabelSize = Math.round(r * 0.13)  // 从0.16改为0.13，更小
   
-  // 绘制半透明背景
-  const rText = `R-${Math.abs(gLat).toFixed(1)}G`
-  const rTextWidth = ctx.measureText(rText).width
-  const rBgX = cx - rTextWidth / 2 - 8
-  const rBgY = cy + gBallR + 8
-  const rBgW = rTextWidth + 16
-  const rBgH = rLabelSize + 8
+  // 缩小盒子尺寸，更精致
+  const rBgW = rLabelSize * 4.5
+  const rBgH = rLabelSize + 4     // 从6改为4，更紧凑
   
-  ctx.fillStyle = 'rgba(0,0,0,0.6)'
-  roundRect(ctx, rBgX, rBgY, rBgW, rBgH, 4)
+  // 位置：G球底部居中
+  const rBgX = cx - rBgW / 2
+  const rBgY = cy + gBallR - rBgH - 10
+  
+  // 绘制半透明背景（浅灰色，更精致）
+  ctx.fillStyle = 'rgba(200,200,200,0.25)'
+  roundRect(ctx, rBgX, rBgY, rBgW, rBgH, 3)  // 从4改为3，圆角更小
   ctx.fill()
   
-  // 绘制文字
-  ctx.fillStyle = skin.textDimColor
-  ctx.textAlign = 'center'
+  // 可选：添加边框让盒子更精致
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+  ctx.lineWidth = 0.5
+  roundRect(ctx, rBgX, rBgY, rBgW, rBgH, 3)
+  ctx.stroke()
+  
+  // 使用Arial字体，白色
+  ctx.font = `700 ${rLabelSize}px "Arial", sans-serif`
+  ctx.fillStyle = '#ffffff'
   ctx.textBaseline = 'middle'
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 3 }
+  
+  // 构建文本
+  const gValue = Math.abs(gLat).toFixed(1)
+  const rText = `R-${gValue}G`
+  
+  // 居中绘制
+  ctx.textAlign = 'center'
   ctx.fillText(rText, cx, rBgY + rBgH / 2)
   ctx.restore()
 
@@ -665,11 +803,14 @@ function drawCustomSpeedGauge(
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 4 }
   ctx.fillText(String(Math.round(maxSpd)), maxX, maxY)
   ctx.restore()
+  
+  // 绘制弯道速度标签（右侧）
+  drawCornerSpeedLabels(ctx, cx, cy, r, frame, currentTime)
 }
 
 export const customTheme: Theme = {
   id: 'custom',
-  name: '自定义',
+  name: 'DSK专属',
   preview: {
     bg: '#1e293b', // 深蓝灰色
     border: 'rgba(255,255,255,0.13)',
@@ -686,4 +827,272 @@ export const customTheme: Theme = {
     // 左下角：自定义速度表
     drawCustomSpeedGauge(ctx, pctBox(frame, 'bl', 0.02, 0.04, 0.18, 0.28), frame, TRANSPARENT_SKIN)
   },
+}
+
+/** 添加G力痕迹 */
+function addGTrail(x: number, y: number, timestamp: number, type: GTrail['type'], gValue: number) {
+  // 检查是否与最近的同类型痕迹距离太近（避免重复）
+  const MIN_DISTANCE = 5
+  const recentSameType = gTrails.filter(t => t.type === type && timestamp - t.timestamp < 500)
+  for (const t of recentSameType) {
+    const dist = Math.hypot(x - t.x, y - t.y)
+    if (dist < MIN_DISTANCE) return // 距离太近，不添加
+  }
+  
+  gTrails.push({ x, y, timestamp, type, gValue })
+  
+  // 限制每个类型的痕迹数量
+  const sameTypeTrails = gTrails.filter(t => t.type === type)
+  if (sameTypeTrails.length > MAX_TRAILS_PER_TYPE) {
+    const oldestIndex = gTrails.indexOf(sameTypeTrails[0])
+    if (oldestIndex >= 0) gTrails.splice(oldestIndex, 1)
+  }
+}
+
+/** 绘制所有G力痕迹（渐消失效果） */
+function drawGTrails(ctx: CanvasRenderingContext2D, currentTime: number) {
+  // 清理过期的痕迹
+  for (let i = gTrails.length - 1; i >= 0; i--) {
+    if (currentTime - gTrails[i].timestamp > TRAIL_FADE_DURATION) {
+      gTrails.splice(i, 1)
+    }
+  }
+  
+  // 绘制痕迹
+  const colors = {
+    left: '#ff6b9d',    // 粉红（左转）
+    right: '#4dabf7',   // 蓝色（右转）
+    accel: '#51cf66',   // 绿色（加速）
+    brake: '#ff8787',   // 红色（刹车）
+  }
+  
+  for (const trail of gTrails) {
+    const age = currentTime - trail.timestamp
+    const fadeProgress = age / TRAIL_FADE_DURATION
+    const opacity = 1 - fadeProgress
+    
+    if (opacity <= 0) continue
+    
+    const baseColor = colors[trail.type]
+    
+    // 绘制外圈（大圆，更透明）
+    ctx.save()
+    ctx.globalAlpha = opacity * 0.3
+    ctx.beginPath()
+    ctx.arc(trail.x, trail.y, 12, 0, 2 * Math.PI)
+    ctx.fillStyle = baseColor
+    ctx.fill()
+    ctx.restore()
+    
+    // 绘制内圈（小圆，更实）
+    ctx.save()
+    ctx.globalAlpha = opacity * 0.6
+    ctx.beginPath()
+    ctx.arc(trail.x, trail.y, 6, 0, 2 * Math.PI)
+    ctx.fillStyle = baseColor
+    ctx.fill()
+    ctx.restore()
+    
+    // 中心点
+    ctx.save()
+    ctx.globalAlpha = opacity
+    ctx.beginPath()
+    ctx.arc(trail.x, trail.y, 2, 0, 2 * Math.PI)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.restore()
+  }
+}
+
+/** 弯道检测：基于速度变化率（更可靠） */
+function detectCornerAndRecordSpeed(speed: number, gLat: number, currentTime: number, lapNum: number, lat: number, lng: number) {
+  // 维护速度历史
+  recentSpeedHistory.push({ speed, time: currentTime })
+  recentSpeedHistory = recentSpeedHistory.filter(h => currentTime - h.time < SPEED_HISTORY_DURATION)
+  
+  // 计算速度变化率（加速度）
+  let speedDropRate = 0
+  if (lastSpeedTime > 0) {
+    const timeDiff = (currentTime - lastSpeedTime) / 1000 // 转换为秒
+    if (timeDiff > 0) {
+      speedDropRate = (speed - lastSpeed) / timeDiff // km/h/s
+    }
+  }
+  lastSpeed = speed
+  lastSpeedTime = currentTime
+  
+  const isHighG = Math.abs(gLat) > CORNER_G_THRESHOLD
+  const isBraking = speedDropRate < SPEED_DROP_RATE_THRESHOLD // 速度快速下降
+  const isAccelerating = speedDropRate > 3 // 速度开始回升（出弯信号）
+  
+  // 状态机
+  if (isBraking && !inBrakingPhase) {
+    // 检测到刹车开始（速度开始快速下降）- 只在这一刻记录刹车点
+    inBrakingPhase = true
+    brakingStartSpeed = speed
+    
+    // 记录刹车点位置（只记录一次，刹车开始的位置）
+    brakePoints.push({ lat, lng, timestamp: currentTime })
+    
+    // 从最近2秒的速度历史中找最高速度（刹车前的最高速度）
+    const recent2sec = recentSpeedHistory.filter(h => currentTime - h.time < 2000)
+    const maxSpeed = recent2sec.length > 0 
+      ? Math.max(...recent2sec.map(h => h.speed))
+      : speed
+    
+    // 如果同时有横向G力，说明是刹车入弯
+    if (isHighG) {
+      inCornerState = true
+      cornerStartTime = currentTime
+      currentCorner = {
+        maxSpeed: maxSpeed,
+        minSpeed: speed,
+        timestamp: currentTime,
+        isActive: true,
+        brakePoint: { lat, lng } // 记录刹车点
+      }
+    }
+  }
+  
+  if (inBrakingPhase) {
+    // 在刹车/过弯阶段
+    if (isHighG && !inCornerState) {
+      // 刹车后开始转向，进入弯道
+      inCornerState = true
+      cornerStartTime = currentTime
+      
+      const recent2sec = recentSpeedHistory.filter(h => currentTime - h.time < 2000)
+      const maxSpeed = recent2sec.length > 0 
+        ? Math.max(...recent2sec.map(h => h.speed))
+        : brakingStartSpeed
+      
+      currentCorner = {
+        maxSpeed: maxSpeed,
+        minSpeed: speed,
+        timestamp: currentTime,
+        isActive: true,
+        brakePoint: brakePoints.length > 0 ? brakePoints[brakePoints.length - 1] : { lat, lng }
+      }
+    }
+    
+    if (inCornerState && currentCorner) {
+      // 更新弯中最低速度
+      if (speed < currentCorner.minSpeed) {
+        currentCorner.minSpeed = speed
+      }
+    }
+    
+    // 检测出弯：速度开始回升 + G力降低
+    if (isAccelerating && !isHighG && inCornerState && currentCorner) {
+      const cornerDuration = currentTime - cornerStartTime
+      const speedDrop = currentCorner.maxSpeed - currentCorner.minSpeed
+      
+      // 判断是否为有效的刹车弯道
+      if (cornerDuration > CORNER_MIN_DURATION && speedDrop > CORNER_SPEED_DROP) {
+        // 有效弯道，标记为完成（isActive = false）
+        currentCorner.isActive = false
+        currentCorner.timestamp = currentTime
+        lastCornerDisplay = { ...currentCorner }
+      }
+      
+      // 重置状态
+      inBrakingPhase = false
+      inCornerState = false
+      currentCorner = null
+    }
+  }
+}
+
+/** 绘制弯道速度标签 */
+function drawCornerSpeedLabels(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  frame: HudFrame,
+  currentTime: number
+) {
+  // 只显示已完成的弯道数据（出弯后）
+  // 弯道进行中（currentCorner.isActive）不显示
+  let displayData: CornerSpeed | null = null
+  let opacity = 1
+  
+  if (lastCornerDisplay && !lastCornerDisplay.isActive) {
+    // 只显示已完成的弯道（isActive = false）
+    const elapsed = currentTime - lastCornerDisplay.timestamp
+    if (elapsed < CORNER_DISPLAY_DURATION) {
+      displayData = lastCornerDisplay
+      
+      // 动画效果：前1秒闪烁，然后稳定显示，最后1秒渐隐
+      if (elapsed < 1000) {
+        // 闪烁效果（0-1000ms）：快速闪烁4次
+        const blinkCycle = (elapsed % 250) / 250 // 每250ms一个周期，共4次
+        opacity = blinkCycle < 0.5 ? 1 : 0.3
+      } else {
+        // 稳定显示阶段（1000ms - 2000ms）
+        const fadeStartTime = CORNER_DISPLAY_DURATION - 1000
+        if (elapsed > fadeStartTime) {
+          // 渐隐效果（最后1秒）
+          opacity = 1 - ((elapsed - fadeStartTime) / 1000)
+        } else {
+          opacity = 1
+        }
+      }
+    } else {
+      lastCornerDisplay = null
+    }
+  }
+  
+  if (!displayData) return
+  
+  // 标签位置：速度表右侧（往左移动）
+  const labelX = cx + r * 1.2  // 从1.5改为1.2，更靠近速度表
+  const labelW = r * 2.2
+  const labelH = r * 0.35
+  const labelGap = r * 0.15
+  
+  const maxLabelY = cy - r * 0.4
+  const minLabelY = cy + r * 0.2
+  
+  ctx.save()
+  ctx.globalAlpha = opacity
+  
+  // 上方：绿色 Max Speed 标签
+  ctx.fillStyle = 'rgba(76, 175, 80, 0.9)'  // 绿色
+  roundRect(ctx, labelX, maxLabelY, labelW, labelH, 6)
+  ctx.fill()
+  
+  // Max Speed 文字
+  const maxFontSize = Math.round(labelH * 0.45)
+  ctx.font = `700 ${maxFontSize}px "Arial", sans-serif`
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('Max Speed', labelX + labelH * 0.3, maxLabelY + labelH * 0.5)
+  
+  // 速度数字（右侧）
+  const speedFontSize = Math.round(labelH * 0.55)
+  ctx.font = `700 ${speedFontSize}px "Arial", sans-serif`
+  ctx.textAlign = 'right'
+  const unit = frame.unit === 'mph' ? 'mph' : 'km/h'
+  ctx.fillText(`${Math.round(displayData.maxSpeed)}${unit}`, labelX + labelW - labelH * 0.3, maxLabelY + labelH * 0.5)
+  
+  // 下方：红色/橙色 Min Speed 标签
+  ctx.fillStyle = 'rgba(255, 87, 34, 0.9)'  // 橙红色
+  roundRect(ctx, labelX, minLabelY, labelW, labelH, 6)
+  ctx.fill()
+  
+  // Min Speed 文字
+  ctx.font = `700 ${maxFontSize}px "Arial", sans-serif`
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('Min Speed', labelX + labelH * 0.3, minLabelY + labelH * 0.5)
+  
+  // 速度数字（右侧）
+  ctx.font = `700 ${speedFontSize}px "Arial", sans-serif`
+  ctx.textAlign = 'right'
+  ctx.fillText(`${Math.round(displayData.minSpeed)}${unit}`, labelX + labelW - labelH * 0.3, minLabelY + labelH * 0.5)
+  
+  ctx.restore()
 }
