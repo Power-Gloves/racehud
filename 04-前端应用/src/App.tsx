@@ -571,7 +571,7 @@ export default function App() {
                   onExportRangeChange={(selection) => {
                     setExportRangeSelection(selection)
                     // 同步到settings
-                    setSettings(prev => ({
+                    setSettings((prev: ExportSettings) => ({
                       ...prev,
                       exportMode: selection.mode,
                       selectedLap: selection.selectedLapNum,

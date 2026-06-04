@@ -9,9 +9,7 @@
  *   - G球：透明叠加
  */
 import type { Theme, HudFrame } from '../types'
-import { lerpColor } from '../types'
 import {
-  drawMiniMap,
   pctBox, type WidgetSkin, drawCard, type Box,
 } from '../widgets'
 
@@ -264,8 +262,8 @@ let currentLapMaxLeft = 0
 let currentLapMaxRight = 0
 let currentLapMaxAccel = 0
 let currentLapMaxBrake = 0
-let lastGLat = 0
-let lastGLong = 0
+// let lastGLat = 0  // 未使用，注释掉
+// let lastGLong = 0  // 未使用，注释掉
 let lastRecordedLapNum = 0
 
 // 弯道速度记录
@@ -672,8 +670,8 @@ function drawCustomSpeedGauge(
     addGTrail(trailX, trailY, currentTime, 'brake', Math.abs(gLong))
   }
   
-  lastGLat = gLat
-  lastGLong = gLong
+  // lastGLat = gLat  // 未使用，注释掉
+  // lastGLong = gLong  // 未使用，注释掉
   
   // 绘制渐消失的极值痕迹
   drawGTrails(ctx, currentTime)
@@ -701,7 +699,7 @@ function drawCustomSpeedGauge(
   ctx.restore()
 
   // G力总值显示在G球中心（按设计图要求）- 暂时隐藏
-  const gTotal = Math.sqrt(gLong * gLong + gLat * gLat)
+  // const gTotal = Math.sqrt(gLong * gLong + gLat * gLat)  // 未使用
   // ctx.save()
   // const gFontSize = Math.round(r * 0.35)
   // ctx.font = `700 ${gFontSize}px ${skin.numFont}`
