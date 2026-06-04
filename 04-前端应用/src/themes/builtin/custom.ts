@@ -301,6 +301,14 @@ function drawCustomLapList(
   frame: HudFrame,
   skin: WidgetSkin,
 ) {
+  // 调整位置：从右上角齐平位置，向下62.5px，向左62.5px
+  // 原始box是基于pctBox计算的，需要重新定位到绝对右上角
+  // 右边缘对齐：frame.width - box.w（让右边贴齐），然后左移62.5px
+  // 顶部对齐：0，然后下移62.5px
+  const alignedX = frame.width - box.w - 62.5  // 右边缘齐平后左移62.5px
+  const alignedY = 62.5  // 顶部齐平后下移62.5px
+  box = { ...box, x: alignedX, y: alignedY }
+  
   drawCard(ctx, box, skin)
   const pad = skin.padding ?? 20
   
@@ -549,8 +557,9 @@ function drawCustomSpeedGauge(
   // 不绘制背景卡片，保持透明
   // drawCard(ctx, box, skin)
 
+  // G球和速度表中心坐标 - 下移45px（90-45）
   const cx = box.x + box.w / 2
-  const cy = box.y + box.h / 2
+  const cy = box.y + box.h / 2 + 45
   const r = Math.min(box.w, box.h) * 0.35
   
   // 弧线角度：从8点钟位置到2点钟位置
@@ -630,51 +639,51 @@ function drawCustomSpeedGauge(
   ctx.stroke()
   ctx.restore()
 
-  // 更新极值并记录痕迹
+  // 更新极值并记录痕迹 - 已禁用渐隐效果
   const MAX_G = 3
   const gLatNorm = -gLat / MAX_G  // 横向G力（反向）
   const gLongNorm = -gLong / MAX_G // 纵向G力（反向）
   
-  // 检测极值并添加痕迹
-  const THRESHOLD = 0.1 // 极值变化阈值（避免抖动）
+  // 检测极值 - 不再添加痕迹
+  // const THRESHOLD = 0.1 // 极值变化阈值（避免抖动）
   
-  // 左转极值（gLat为负，球往右）
-  if (gLat < 0 && Math.abs(gLat) > currentLapMaxLeft + THRESHOLD) {
-    currentLapMaxLeft = Math.abs(gLat)
-    const trailX = cx + gLatNorm * gBallR * 0.8
-    const trailY = cy + gLongNorm * gBallR * 0.8
-    addGTrail(trailX, trailY, currentTime, 'left', Math.abs(gLat))
-  }
+  // // 左转极值（gLat为负，球往右）
+  // if (gLat < 0 && Math.abs(gLat) > currentLapMaxLeft + THRESHOLD) {
+  //   currentLapMaxLeft = Math.abs(gLat)
+  //   const trailX = cx + gLatNorm * gBallR * 0.8
+  //   const trailY = cy + gLongNorm * gBallR * 0.8
+  //   addGTrail(trailX, trailY, currentTime, 'left', Math.abs(gLat))
+  // }
   
-  // 右转极值（gLat为正，球往左）
-  if (gLat > 0 && Math.abs(gLat) > currentLapMaxRight + THRESHOLD) {
-    currentLapMaxRight = Math.abs(gLat)
-    const trailX = cx + gLatNorm * gBallR * 0.8
-    const trailY = cy + gLongNorm * gBallR * 0.8
-    addGTrail(trailX, trailY, currentTime, 'right', Math.abs(gLat))
-  }
+  // // 右转极值（gLat为正，球往左）
+  // if (gLat > 0 && Math.abs(gLat) > currentLapMaxRight + THRESHOLD) {
+  //   currentLapMaxRight = Math.abs(gLat)
+  //   const trailX = cx + gLatNorm * gBallR * 0.8
+  //   const trailY = cy + gLongNorm * gBallR * 0.8
+  //   addGTrail(trailX, trailY, currentTime, 'right', Math.abs(gLat))
+  // }
   
-  // 加速极值（gLong为负）
-  if (gLong < 0 && Math.abs(gLong) > currentLapMaxAccel + THRESHOLD) {
-    currentLapMaxAccel = Math.abs(gLong)
-    const trailX = cx + gLatNorm * gBallR * 0.8
-    const trailY = cy + gLongNorm * gBallR * 0.8
-    addGTrail(trailX, trailY, currentTime, 'accel', Math.abs(gLong))
-  }
+  // // 加速极值（gLong为负）
+  // if (gLong < 0 && Math.abs(gLong) > currentLapMaxAccel + THRESHOLD) {
+  //   currentLapMaxAccel = Math.abs(gLong)
+  //   const trailX = cx + gLatNorm * gBallR * 0.8
+  //   const trailY = cy + gLongNorm * gBallR * 0.8
+  //   addGTrail(trailX, trailY, currentTime, 'accel', Math.abs(gLong))
+  // }
   
-  // 刹车极值（gLong为正）
-  if (gLong > 0 && Math.abs(gLong) > currentLapMaxBrake + THRESHOLD) {
-    currentLapMaxBrake = Math.abs(gLong)
-    const trailX = cx + gLatNorm * gBallR * 0.8
-    const trailY = cy + gLongNorm * gBallR * 0.8
-    addGTrail(trailX, trailY, currentTime, 'brake', Math.abs(gLong))
-  }
+  // // 刹车极值（gLong为正）
+  // if (gLong > 0 && Math.abs(gLong) > currentLapMaxBrake + THRESHOLD) {
+  //   currentLapMaxBrake = Math.abs(gLong)
+  //   const trailX = cx + gLatNorm * gBallR * 0.8
+  //   const trailY = cy + gLongNorm * gBallR * 0.8
+  //   addGTrail(trailX, trailY, currentTime, 'brake', Math.abs(gLong))
+  // }
   
   // lastGLat = gLat  // 未使用，注释掉
   // lastGLong = gLong  // 未使用，注释掉
   
-  // 绘制渐消失的极值痕迹
-  drawGTrails(ctx, currentTime)
+  // 绘制渐消失的极值痕迹 - 已禁用
+  // drawGTrails(ctx, currentTime)
 
   // G力点（青色双层圆圈）- 在痕迹之上绘制
   const dotX = cx + gLatNorm * gBallR * 0.8
@@ -743,16 +752,16 @@ function drawCustomSpeedGauge(
   const gValue = Math.abs(gLat).toFixed(1)
   const rText = `R-${gValue}G`
   
-  // 居中绘制
+  // 居中绘制（文字内容下移1.5px）
   ctx.textAlign = 'center'
-  ctx.fillText(rText, cx, rBgY + rBgH / 2)
+  ctx.fillText(rText, cx, rBgY + rBgH / 2 + 1.5)
   ctx.restore()
 
   // 速度数字（左上角外侧，固定位置，右对齐避免跳动）
-  const speedX = cx - r * 2.1  // 改为2.3
+  const speedX = cx - r * 1.8  // 从2.1改为1.8，往右移
   const speedY = cy - r * 0.8
   ctx.save()
-  const numFontSize = Math.round(box.h * 0.15)
+  const numFontSize = Math.round(box.h * 0.11)  // 调整为0.11
   ctx.font = `700 ${numFontSize}px ${skin.numFont}`
   ctx.fillStyle = skin.textColor
   ctx.textAlign = 'right'  // 改为右对齐
@@ -821,6 +830,27 @@ export const customTheme: Theme = {
     
     // 右上角：自定义圈速信息面板（缩小宽度到16%）
     drawCustomLapList(ctx, pctBox(frame, 'tr', 0.02, 0.02, 0.16, 0.20), frame, DARK_CARD_SKIN)
+    
+    // 左下角：自定义速度表
+    drawCustomSpeedGauge(ctx, pctBox(frame, 'bl', 0.02, 0.04, 0.18, 0.28), frame, TRANSPARENT_SKIN)
+  },
+}
+
+// 无圈速版主题
+export const customNoLapTheme: Theme = {
+  id: 'custom-no-lap',
+  name: 'DSK专属（无圈速版）',
+  preview: {
+    bg: '#1e293b', // 深蓝灰色
+    border: 'rgba(255,255,255,0.13)',
+    text: '#ffffff',
+    accent: '#00e5ff', // 青色
+  },
+  drawHud(ctx, frame) {
+    // 右下角：自定义赛道地图（无背景、无TRACK字样）
+    drawCustomMiniMap(ctx, pctBox(frame, 'br', 0.02, 0.04, 0.18, 0.28), frame, MAP_SKIN)
+    
+    // 不绘制右上角圈速列表
     
     // 左下角：自定义速度表
     drawCustomSpeedGauge(ctx, pctBox(frame, 'bl', 0.02, 0.04, 0.18, 0.28), frame, TRANSPARENT_SKIN)
@@ -1021,20 +1051,13 @@ function drawCornerSpeedLabels(
     if (elapsed < CORNER_DISPLAY_DURATION) {
       displayData = lastCornerDisplay
       
-      // 动画效果：前1秒闪烁，然后稳定显示，最后1秒渐隐
-      if (elapsed < 1000) {
-        // 闪烁效果（0-1000ms）：快速闪烁4次
-        const blinkCycle = (elapsed % 250) / 250 // 每250ms一个周期，共4次
-        opacity = blinkCycle < 0.5 ? 1 : 0.3
+      // 动画效果：稳定显示，最后1秒渐隐
+      const fadeStartTime = CORNER_DISPLAY_DURATION - 1000
+      if (elapsed > fadeStartTime) {
+        // 渐隐效果（最后1秒）
+        opacity = 1 - ((elapsed - fadeStartTime) / 1000)
       } else {
-        // 稳定显示阶段（1000ms - 2000ms）
-        const fadeStartTime = CORNER_DISPLAY_DURATION - 1000
-        if (elapsed > fadeStartTime) {
-          // 渐隐效果（最后1秒）
-          opacity = 1 - ((elapsed - fadeStartTime) / 1000)
-        } else {
-          opacity = 1
-        }
+        opacity = 1
       }
     } else {
       lastCornerDisplay = null
@@ -1043,8 +1066,8 @@ function drawCornerSpeedLabels(
   
   if (!displayData) return
   
-  // 标签位置：速度表右侧（往左移动）
-  const labelX = cx + r * 1.2  // 从1.5改为1.2，更靠近速度表
+  // 标签位置：速度表右侧（往右移避免遮挡G球）
+  const labelX = cx + r * 1.5  // 从1.2改为1.5，往右移
   const labelW = r * 2.2
   const labelH = r * 0.35
   // const labelGap = r * 0.15  // 未使用
