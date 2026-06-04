@@ -34,6 +34,19 @@ interface Props {
   onAutoSync?: () => void
   /** 是否正在自动对齐 */
   syncing?: boolean
+  /** 导出范围选择（可视化交互） */
+  exportRangeSelection?: {
+    mode: 'full' | 'lap' | 'custom'
+    selectedLapNum?: number
+    customStartSec?: number
+    customEndSec?: number
+  }
+  onExportRangeChange?: (selection: {
+    mode: 'full' | 'lap' | 'custom'
+    selectedLapNum?: number
+    customStartSec?: number
+    customEndSec?: number
+  }) => void
 }
 
 /**
@@ -72,6 +85,8 @@ export default function Timeline({
   locked, onToggleLock,
   laps, onJumpToLap,
   onAutoSync, syncing,
+  exportRangeSelection,
+  onExportRangeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(0)
@@ -305,17 +320,48 @@ export default function Timeline({
 
             {/* 视频轨道 */}
             {videoDuration > 0 && (
-              <Track
-                y={88}
-                label={videoName ? `🎬 ${truncate(videoName, 30)}` : '视频'}
-                left={videoLeft}
-                right={videoRight}
-                color={locked ? 'bg-cyan-500/15' : 'bg-cyan-500/30'}
-                border={locked ? 'border-cyan-500/40' : 'border-cyan-400'}
-                labelColor="text-cyan-300"
-                dragging={drag?.target === 'video'}
-                onMouseDown={(e) => startDrag(e, 'video')}
-              />
+              <>
+                <Track
+                  y={88}
+                  label={videoName ? `🎬 ${truncate(videoName, 30)}` : '视频'}
+                  left={videoLeft}
+                  right={videoRight}
+                  color={locked ? 'bg-cyan-500/15' : 'bg-cyan-500/30'}
+                  border={locked ? 'border-cyan-500/40' : 'border-cyan-400'}
+                  labelColor="text-cyan-300"
+                  dragging={drag?.target === 'video'}
+                  onMouseDown={(e) => startDrag(e, 'video')}
+                />
+                
+                {/* 导出范围高亮（单圈模式） */}
+                {exportRangeSelection?.mode === 'lap' && exportRangeSelection.selectedLapNum != null && (
+                  (() => {
+                    const selectedLap = laps.find(l => l.lapNum === exportRangeSelection.selectedLapNum)
+                    if (!selectedLap) return null
+                    // 将GPS时间转换为视频时间
+                    const lapStartVideoSec = (selectedLap.startT - dataStartT - dataOffsetMs + videoOffsetMs) / 1000
+                    const lapEndVideoSec = (selectedLap.endT - dataStartT - dataOffsetMs + videoOffsetMs) / 1000
+                    const exportLeft = tToX(videoOffsetMs + lapStartVideoSec * 1000)
+                    const exportRight = tToX(videoOffsetMs + lapEndVideoSec * 1000)
+                    return (
+                      <div
+                        className="absolute pointer-events-none border-2 border-orange-400 bg-orange-500/20 rounded"
+                        style={{ 
+                          top: 86, 
+                          left: Math.max(videoLeft, exportLeft),
+                          width: Math.max(0, Math.min(videoRight, exportRight) - Math.max(videoLeft, exportLeft)),
+                          height: 16,
+                        }}
+                        title={`导出范围：第${selectedLap.lapNum}圈`}
+                      >
+                        <span className="absolute left-1 top-0 text-[8px] font-bold text-orange-300 uppercase">
+                          EXPORT
+                        </span>
+                      </div>
+                    )
+                  })()
+                )}
+              </>
             )}
 
             {/* 中央 Playhead — 永远固定在屏幕中央 */}
@@ -340,6 +386,16 @@ export default function Timeline({
           laps={laps}
           activeLapNum={activeLapNum}
           onJumpToLap={onJumpToLap}
+          exportMode={exportRangeSelection?.mode ?? 'full'}
+          selectedLapNum={exportRangeSelection?.selectedLapNum}
+          onSelectLapForExport={(lapNum) => {
+            if (onExportRangeChange) {
+              onExportRangeChange({
+                mode: 'lap',
+                selectedLapNum: lapNum,
+              })
+            }
+          }}
         />
       )}
     </div>
@@ -408,11 +464,14 @@ function SpeedThumbnail({ points, clipStartT, clipEndT, tToX }: {
   )
 }
 
-/** 圈分段：All Laps + 每一圈带 delta 徽章 */
-function LapChips({ laps, activeLapNum, onJumpToLap }: {
+/** 圈分段：All Laps + 每一圈带 delta 徽章 + 导出选择 */
+function LapChips({ laps, activeLapNum, onJumpToLap, exportMode, selectedLapNum, onSelectLapForExport }: {
   laps: LapInfo[]
   activeLapNum: number | null
   onJumpToLap: (lap: LapInfo | null) => void
+  exportMode?: 'full' | 'lap' | 'custom'
+  selectedLapNum?: number
+  onSelectLapForExport?: (lapNum: number) => void
 }) {
   const validLaps = laps.filter(l => l.lapNum > 0)
   const bestLap = validLaps.find(l => l.isBest)
@@ -436,27 +495,48 @@ function LapChips({ laps, activeLapNum, onJumpToLap }: {
       </button>
       {validLaps.map(lap => {
         const isActive = lap.lapNum === activeLapNum
+        const isSelectedForExport = exportMode === 'lap' && selectedLapNum === lap.lapNum
         const delta = bestLap && !lap.isBest ? lap.lapTime - bestLap.lapTime : 0
         return (
           <button
             key={lap.lapNum}
             onClick={() => onJumpToLap(lap)}
+            onContextMenu={(e) => {
+              // 右键选择/取消选择该圈用于导出
+              e.preventDefault()
+              if (onSelectLapForExport) {
+                // 如果已选中，则取消选中；否则选中
+                if (isSelectedForExport) {
+                  onSelectLapForExport(undefined as any) // 取消选中
+                } else {
+                  onSelectLapForExport(lap.lapNum)
+                }
+              }
+            }}
             className={`shrink-0 relative flex flex-col items-center justify-center min-w-[72px] px-3 py-1.5 rounded text-xs transition leading-tight ${
-              isActive
-                ? 'bg-blue-600 text-white'
-                : lap.isBest
-                  ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/40'
-                  : 'bg-[#2A2A2A] text-slate-300 hover:bg-[#333]'
+              isSelectedForExport
+                ? 'bg-orange-500 text-white ring-2 ring-orange-400'
+                : isActive
+                  ? 'bg-blue-600 text-white'
+                  : lap.isBest
+                    ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/40'
+                    : 'bg-[#2A2A2A] text-slate-300 hover:bg-[#333]'
             }`}
-            title={`第 ${lap.lapNum} 圈 · ${formatLap(lap.lapTime)}${lap.isBest ? ' · 最佳' : ''}`}
+            title={`第 ${lap.lapNum} 圈 · ${formatLap(lap.lapTime)}${lap.isBest ? ' · 最佳' : ''}${isSelectedForExport ? ' · 导出选中 (再次右键取消)' : ''}\n左键跳转 / 右键${isSelectedForExport ? '取消' : '选择'}导出`}
           >
+            {/* 导出选中标记 */}
+            {isSelectedForExport && (
+              <span className="absolute -top-2 -right-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-orange-600 text-white">
+                EXPORT
+              </span>
+            )}
             {/* 顶部 delta 徽章 */}
-            {lap.isBest && (
+            {!isSelectedForExport && lap.isBest && (
               <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white">
                 BEST
               </span>
             )}
-            {!lap.isBest && delta > 0 && (
+            {!isSelectedForExport && !lap.isBest && delta > 0 && (
               <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white">
                 +{delta.toFixed(2)}
               </span>

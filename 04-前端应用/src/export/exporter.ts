@@ -70,14 +70,18 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   const W = opts.outputWidth ?? (await videoTrack.getDisplayWidth())
   const H = opts.outputHeight ?? (await videoTrack.getDisplayHeight())
 
+  // HUD 设计尺寸固定为 1920×1080（与预览一致）
+  const HUD_DESIGN_W = 1920
+  const HUD_DESIGN_H = 1080
+
   // 2. 准备渲染 canvas（用 OffscreenCanvas 性能更好；fallback 普通 canvas）
   let canvas: OffscreenCanvas | HTMLCanvasElement
   try {
-    canvas = new OffscreenCanvas(W, H)
+    canvas = new OffscreenCanvas(HUD_DESIGN_W, HUD_DESIGN_H)
   } catch {
     canvas = document.createElement('canvas')
-    canvas.width = W
-    canvas.height = H
+    canvas.width = HUD_DESIGN_W
+    canvas.height = HUD_DESIGN_H
   }
   const ctx = canvas.getContext('2d') as
     | OffscreenCanvasRenderingContext2D
@@ -85,12 +89,27 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
     | null
   if (!ctx) throw new Error('无法创建 canvas 2d 上下文')
 
+  // 准备输出画布（目标分辨率）
+  let outputCanvas: OffscreenCanvas | HTMLCanvasElement
+  try {
+    outputCanvas = new OffscreenCanvas(W, H)
+  } catch {
+    outputCanvas = document.createElement('canvas')
+    outputCanvas.width = W
+    outputCanvas.height = H
+  }
+  const outputCtx = outputCanvas.getContext('2d') as
+    | OffscreenCanvasRenderingContext2D
+    | CanvasRenderingContext2D
+    | null
+  if (!outputCtx) throw new Error('无法创建输出 canvas 2d 上下文')
+
   // 3. 准备 mediabunny 输出
   const output = new Output({
     format: new Mp4OutputFormat(),
     target: new BufferTarget(),
   })
-  const videoSource = new CanvasSource(canvas as HTMLCanvasElement, {
+  const videoSource = new CanvasSource(outputCanvas as HTMLCanvasElement, {
     codec: 'avc',
     bitrate: QUALITY_HIGH,
   })
@@ -113,7 +132,11 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   let lastProgress = 0
 
   // 创建 CanvasSink 用于解码视频帧
-  const canvasSink = new CanvasSink(videoTrack, { width: W, height: H })
+  const canvasSink = new CanvasSink(videoTrack, { 
+    width: W, 
+    height: H,
+    fit: 'contain' // 添加 fit 选项：保持宽高比，contain 或 cover
+  })
 
   // mediabunny 的帧迭代
   for await (const wrapped of canvasSink.canvases(range.startSec, range.endSec)) {
@@ -123,14 +146,18 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
     }
     const { canvas: frameCanvas, timestamp } = wrapped
 
-    // 画视频帧
-    ctx.clearRect(0, 0, W, H)
-    ;(ctx as CanvasRenderingContext2D).drawImage(frameCanvas as unknown as CanvasImageSource, 0, 0, W, H)
+    // 画视频帧到设计画布（1920×1080）
+    ctx.clearRect(0, 0, HUD_DESIGN_W, HUD_DESIGN_H)
+    ;(ctx as CanvasRenderingContext2D).drawImage(frameCanvas as unknown as CanvasImageSource, 0, 0, HUD_DESIGN_W, HUD_DESIGN_H)
 
-    // 画 HUD（用主题，跟预览一致）
+    // 画 HUD（用主题，跟预览一致）- 固定使用设计尺寸
     const gpsT = opts.data.meta.startTime + (timestamp * 1000 - opts.videoOffsetMs) + opts.dataOffsetMs
-    const hudFrame = buildHudFrame(W, H, gpsT, opts)
+    const hudFrame = buildHudFrame(HUD_DESIGN_W, HUD_DESIGN_H, gpsT, opts)
     theme.drawHud(ctx as CanvasRenderingContext2D, hudFrame)
+
+    // 将设计画布缩放到目标分辨率
+    outputCtx.clearRect(0, 0, W, H)
+    ;(outputCtx as CanvasRenderingContext2D).drawImage(canvas as unknown as CanvasImageSource, 0, 0, W, H)
 
     await videoSource.add(timestamp, 1 / 60) // 帧时间戳 + 持续时间（粗略，实际由下一帧覆盖）
 

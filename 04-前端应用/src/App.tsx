@@ -6,9 +6,12 @@ import Timeline from './components/Timeline'
 import LibraryPanel from './components/LibraryPanel'
 import SettingsPanel, { useDefaultSettings } from './components/SettingsPanel'
 import HudCanvas from './components/HudCanvas'
+import ChangelogModal from './components/ChangelogModal'
 import { interpolateSampleAt, useLaps } from './hooks/useLaps'
 import { DEFAULT_THEME_ID, getTheme, type HudFrame } from './themes'
 import { autoSync, type AutoSyncResult } from './telemetry'
+
+const VERSION = 'v2.0.0'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
  *  scale = innerWidth / 1920，浏览器 zoom 时 scale 同步变，物理大小保持不变 */
@@ -28,6 +31,14 @@ export default function App() {
   const [locked, setLocked] = useState<boolean>(true)
   const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID)
   const [settings, setSettings] = useDefaultSettings()
+  
+  // 导出范围选择（用于Timeline可视化交互）
+  const [exportRangeSelection, setExportRangeSelection] = useState<{
+    mode: 'full' | 'lap' | 'custom'
+    selectedLapNum?: number
+    customStartSec?: number
+    customEndSec?: number
+  }>({ mode: 'full' })
 
   const theme = useMemo(() => getTheme(themeId), [themeId])
 
@@ -42,6 +53,18 @@ export default function App() {
   const [exportProgress, setExportProgress] = useState(0)
   const exportAbortRef = useRef<AbortController | null>(null)
 
+  // 更新说明弹窗状态
+  const [showChangelog, setShowChangelog] = useState(false)
+
+  // 首次进入自动显示更新说明
+  useEffect(() => {
+    const lastVersion = localStorage.getItem('racehud_last_version')
+    if (lastVersion !== VERSION) {
+      setShowChangelog(true)
+      localStorage.setItem('racehud_last_version', VERSION)
+    }
+  }, [])
+
   /** 导出当前视频（带 HUD） */
   async function handleExport() {
     if (!video || !data || !videoMeta) return
@@ -52,6 +75,67 @@ export default function App() {
     setSyncMsg('正在导出，请勿关闭页面…')
     const abort = new AbortController()
     exportAbortRef.current = abort
+    
+    // 根据分辨率设置计算输出宽高
+    let outputWidth: number | undefined
+    let outputHeight: number | undefined
+    switch (settings.resolution) {
+      case '720p':
+        outputWidth = 1280
+        outputHeight = 720
+        break
+      case '1080p':
+        outputWidth = 1920
+        outputHeight = 1080
+        break
+      case '2k':
+        outputWidth = 2560
+        outputHeight = 1440
+        break
+      case '4k':
+        outputWidth = 3840
+        outputHeight = 2160
+        break
+    }
+    
+    // 根据导出模式计算起止时间
+    let startSec = 0
+    let endSec = videoMeta.duration
+    let filename = `racehud_${Date.now()}.mp4`
+    
+    switch (settings.exportMode) {
+      case 'lap':
+        // 导出单圈
+        if (settings.selectedLap != null) {
+          const lap = laps.find(l => l.lapNum === settings.selectedLap)
+          if (lap) {
+            // 将GPS时间转换为视频时间，并添加前后缓冲（前3秒+后2秒）
+            const BUFFER_BEFORE = 3  // 前置缓冲3秒（看到入弯准备）
+            const BUFFER_AFTER = 2   // 后置缓冲2秒（看到出弯完成）
+            
+            const lapStartSec = (lap.startT - data.meta.startTime - dataOffsetMs + videoOffsetMs) / 1000
+            const lapEndSec = (lap.endT - data.meta.startTime - dataOffsetMs + videoOffsetMs) / 1000
+            
+            startSec = Math.max(0, lapStartSec - BUFFER_BEFORE)
+            endSec = Math.min(videoMeta.duration, lapEndSec + BUFFER_AFTER)
+            filename = `racehud_lap${lap.lapNum}_${Date.now()}.mp4`
+          }
+        }
+        break
+      case 'custom':
+        // 自定义范围
+        startSec = settings.customStart ?? 0
+        endSec = settings.customEnd ?? videoMeta.duration
+        filename = `racehud_${startSec.toFixed(0)}-${endSec.toFixed(0)}s_${Date.now()}.mp4`
+        break
+      case 'full':
+      default:
+        // 导出整个视频（默认）
+        startSec = 0
+        endSec = videoMeta.duration
+        break
+    }
+    
     try {
       const blob = await exportVideo({
         videoFile: video.file,
@@ -64,14 +148,16 @@ export default function App() {
         unit: settings.unit,
         theme,
         range: {
-          startSec: 0,
-          endSec: videoMeta.duration,
-          filename: `racehud_${Date.now()}.mp4`,
+          startSec,
+          endSec,
+          filename,
         },
+        outputWidth,
+        outputHeight,
         signal: abort.signal,
         onProgress: setExportProgress,
       })
-      downloadBlob(blob, `racehud_${Date.now()}.mp4`)
+      downloadBlob(blob, filename)
       setSyncMsg('✓ 导出完成')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -367,6 +453,16 @@ export default function App() {
           <header className="h-11 flex items-center px-4 border-b border-[#303030] shrink-0">
             <h1 className="text-base font-bold text-orange-400">racehud</h1>
             <span className="text-[11px] text-gray-66 ml-3">赛车视频 HUD 叠加工具</span>
+            <button
+              onClick={() => setShowChangelog(true)}
+              className="ml-4 px-3 py-1 text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded-full border border-orange-500/40 transition flex items-center gap-1.5"
+              title="查看更新说明"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor" />
+              </svg>
+              <span className="font-semibold">{VERSION} 更新</span>
+            </button>
             {syncMsg && <span className="ml-4 text-cyan-300 text-xs">{syncMsg}</span>}
             {error && <span className="ml-auto text-red-400 text-xs">{error}</span>}
           </header>
@@ -431,6 +527,8 @@ export default function App() {
                   autoLapEnabled={!!autoLapSource}
                   autoLapPos={autoLapPos}
                   onAutoLapPosChange={setAutoLapPos}
+                  laps={laps}
+                  videoDuration={videoMeta?.duration}
                 />
               </div>
             </div>
@@ -469,6 +567,18 @@ export default function App() {
                       onPlayheadChange(dataOffsetMs)
                     }
                   }}
+                  exportRangeSelection={exportRangeSelection}
+                  onExportRangeChange={(selection) => {
+                    setExportRangeSelection(selection)
+                    // 同步到settings
+                    setSettings(prev => ({
+                      ...prev,
+                      exportMode: selection.mode,
+                      selectedLap: selection.selectedLapNum,
+                      customStart: selection.customStartSec,
+                      customEnd: selection.customEndSec,
+                    }))
+                  }}
                 />
               ) : (
                 <div className="bg-black-18 rounded-lg h-full flex items-center justify-center text-gray-66 text-sm border border-[#404243]">
@@ -486,6 +596,12 @@ export default function App() {
           <div className="text-2xl text-orange-300 font-bold">放手以导入文件</div>
         </div>
       )}
+
+      {/* 更新说明弹窗 */}
+      <ChangelogModal 
+        isOpen={showChangelog} 
+        onClose={() => setShowChangelog(false)} 
+      />
     </div>
   )
 }
