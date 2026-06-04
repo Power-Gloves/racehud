@@ -264,9 +264,9 @@ const PreviewStage = forwardRef<HTMLVideoElement, Props>(
             <button
               onClick={() => stepFrame(-1)}
               disabled={!video}
-              className="cursor-pointer text-xs uppercase tracking-wider text-[#9E9C9C] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="px-4 py-1.5 bg-primary hover:opacity-90 disabled:bg-black-18 disabled:text-gray-66 text-white font-medium rounded text-sm transition"
             >
-              Previous Frame
+              ← 上一帧
             </button>
             <button
               onClick={togglePlay}
@@ -282,9 +282,9 @@ const PreviewStage = forwardRef<HTMLVideoElement, Props>(
             <button
               onClick={() => stepFrame(1)}
               disabled={!video}
-              className="cursor-pointer text-xs uppercase tracking-wider text-[#9E9C9C] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="px-4 py-1.5 bg-primary hover:opacity-90 disabled:bg-black-18 disabled:text-gray-66 text-white font-medium rounded text-sm transition"
             >
-              Next Frame
+              下一帧 →
             </button>
           </div>
 

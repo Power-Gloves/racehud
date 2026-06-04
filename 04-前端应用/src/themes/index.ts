@@ -11,6 +11,7 @@ import { neonTheme } from './builtin/neon'
 import { f1Theme } from './builtin/f1'
 import { jdmTheme } from './builtin/jdm'
 import { raceTheme } from './builtin/race'
+import { customTheme } from './builtin/custom'
 import type { Theme } from './types'
 
 export const THEMES: Theme[] = [
@@ -19,6 +20,7 @@ export const THEMES: Theme[] = [
   f1Theme,
   jdmTheme,
   raceTheme,
+  customTheme,
 ]
 
 export const DEFAULT_THEME_ID = 'minimal'

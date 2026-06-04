@@ -53,25 +53,83 @@ export default function SettingsPanel({
       {autoLapEnabled && onAutoLapPosChange && (
         <>
           <Collapsible title="起跑线位置" defaultOpen={false}>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={0}
-                max={1000}
-                value={Math.round((autoLapPos ?? 0.5) * 1000)}
-                onChange={(e) => onAutoLapPosChange(parseInt(e.target.value, 10) / 1000)}
-                className="flex-1 accent-orange-400"
-              />
-              <button
-                onClick={() => onAutoLapPosChange(null)}
-                className="text-[10px] px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-66 hover:text-white shrink-0"
-                title="重置为算法自动选择"
-              >
-                Auto
-              </button>
-            </div>
-            <div className="text-[10px] text-gray-66 mt-1">
-              {autoLapPos == null ? '算法自动选择' : `沿轨迹 ${Math.round(autoLapPos * 100)}%`}
+            <div className="space-y-3">
+              {/* 滑块 */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={1000}
+                  value={Math.round((autoLapPos ?? 0.5) * 1000)}
+                  onChange={(e) => onAutoLapPosChange(parseInt(e.target.value, 10) / 1000)}
+                  className="flex-1 accent-orange-400"
+                />
+                <button
+                  onClick={() => onAutoLapPosChange(null)}
+                  className="text-[10px] px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-66 hover:text-white shrink-0"
+                  title="重置为算法自动选择"
+                >
+                  Auto
+                </button>
+              </div>
+
+              {/* 精确调整 */}
+              {autoLapPos != null && (
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => onAutoLapPosChange(Math.max(0, autoLapPos - 0.01))}
+                      className="px-2 py-1 text-xs bg-primary hover:opacity-90 text-white rounded"
+                      title="向前 1%"
+                    >
+                      -1%
+                    </button>
+                    <button
+                      onClick={() => onAutoLapPosChange(Math.max(0, autoLapPos - 0.0005))}
+                      className="px-2 py-1 text-xs bg-primary/70 hover:opacity-90 text-white rounded"
+                      title="向前 0.05%"
+                    >
+                      -0.05%
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.05}
+                    value={Math.round(autoLapPos * 2000) / 20}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value)
+                      if (!isNaN(val)) onAutoLapPosChange(Math.max(0, Math.min(1, val / 100)))
+                    }}
+                    className="w-16 px-2 py-1 text-xs text-center bg-[#2a2a2a] text-white rounded border border-gray-600 focus:border-primary focus:outline-none"
+                  />
+                  <span className="text-xs text-gray-66">%</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => onAutoLapPosChange(Math.min(1, autoLapPos + 0.0005))}
+                      className="px-2 py-1 text-xs bg-primary/70 hover:opacity-90 text-white rounded"
+                      title="向后 0.05%"
+                    >
+                      +0.05%
+                    </button>
+                    <button
+                      onClick={() => onAutoLapPosChange(Math.min(1, autoLapPos + 0.01))}
+                      className="px-2 py-1 text-xs bg-primary hover:opacity-90 text-white rounded"
+                      title="向后 1%"
+                    >
+                      +1%
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 说明文字 */}
+              <div className="text-[10px] text-gray-66">
+                {autoLapPos == null 
+                  ? '💡 算法自动检测起跑线位置' 
+                  : `📍 当前位置: 沿轨迹 ${Math.round(autoLapPos * 100)}%`}
+              </div>
             </div>
           </Collapsible>
           <div className="border-t border-[#2a2a2a]" />

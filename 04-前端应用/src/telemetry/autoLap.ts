@@ -193,12 +193,22 @@ function computeBestCompare<T extends LapSample>(
     laps.push({ lapNum: num, indices, lapTime })
   }
   if (laps.length === 0) return
+  
+  // 按圈号排序
+  laps.sort((a, b) => a.lapNum - b.lapNum)
 
   // 找最快圈（用中位数附近过滤离群圈，跟 useLaps 一致）
-  const times = laps.map(l => l.lapTime).sort((a, b) => a - b)
+  // 注意: 排除最后一圈(可能是未完成的当前圈)
+  const completedLaps = laps.slice(0, -1) // 排除最后一圈(圈号最大的)
+  if (completedLaps.length === 0) {
+    // 如果只有一圈,用这一圈作为基准
+    completedLaps.push(laps[0])
+  }
+  
+  const times = completedLaps.map(l => l.lapTime).sort((a, b) => a - b)
   const median = times[Math.floor(times.length / 2)]
-  const valid = laps.filter(l => l.lapTime >= median * 0.7 && l.lapTime <= median * 1.3)
-  const pool = valid.length > 0 ? valid : laps
+  const valid = completedLaps.filter(l => l.lapTime >= median * 0.7 && l.lapTime <= median * 1.3)
+  const pool = valid.length > 0 ? valid : completedLaps
   const best = pool.reduce((b, l) => l.lapTime < b.lapTime ? l : b, pool[0])
 
   // 算最佳圈的"距离 → 用时"映射（按本圈起点累计米）
@@ -233,8 +243,54 @@ function computeBestCompare<T extends LapSample>(
     return bestTime[lo] + (bestTime[hi] - bestTime[lo]) * r
   }
 
-  // 对每一圈（含最佳本身）算每个 sample 的 bestCompare
+  // 对每一圈算 bestCompare
+  // 关键：如果当前圈就是最快圈，应该和第二快的圈比较，而不是和自己比
+  
+  // 找第二快的圈作为备用基准
+  let secondBest: LapIdx | null = null
+  if (pool.length > 1) {
+    const sorted = [...pool].sort((a, b) => a.lapTime - b.lapTime)
+    secondBest = sorted[1]
+  }
+  
+  // 为第二快圈建立距离-时间映射（如果存在）
+  let secondBestDist: number[] = []
+  let secondBestTime: number[] = []
+  if (secondBest) {
+    let acc2 = 0
+    let prevIdx2 = -1
+    for (const idx of secondBest.indices) {
+      if (prevIdx2 >= 0) {
+        const dx = xs[idx] - xs[prevIdx2]
+        const dy = ys[idx] - ys[prevIdx2]
+        acc2 += Math.hypot(dx, dy)
+      }
+      secondBestDist.push(acc2)
+      secondBestTime.push((samples[idx].lapTimeInLap ?? 0) / 1000)
+      prevIdx2 = idx
+    }
+  }
+  
+  /** 在第二快圈映射表里查指定距离对应的用时 */
+  function secondBestTimeAtDistance(d: number): number {
+    if (secondBestDist.length < 2) return 0
+    if (d <= secondBestDist[0]) return secondBestTime[0]
+    if (d >= secondBestDist[secondBestDist.length - 1]) return secondBestTime[secondBestTime.length - 1]
+    let lo = 0, hi = secondBestDist.length - 1
+    while (lo + 1 < hi) {
+      const mid = (lo + hi) >> 1
+      if (secondBestDist[mid] <= d) lo = mid
+      else hi = mid
+    }
+    const r = (d - secondBestDist[lo]) / (secondBestDist[hi] - secondBestDist[lo] || 1)
+    return secondBestTime[lo] + (secondBestTime[hi] - secondBestTime[lo]) * r
+  }
+  
   for (const lap of laps) {
+    // 如果这一圈就是最快圈，用第二快圈作为基准
+    const isThisBestLap = (lap.lapNum === best.lapNum)
+    const useSecondBest = isThisBestLap && secondBest !== null
+    
     let dist = 0
     let prev = -1
     for (const idx of lap.indices) {
@@ -244,8 +300,13 @@ function computeBestCompare<T extends LapSample>(
         dist += Math.hypot(dx, dy)
       }
       const curUsed = (samples[idx].lapTimeInLap ?? 0) / 1000
-      const bestUsed = bestTimeAtDistance(dist)
-      samples[idx].bestCompare = curUsed - bestUsed
+      
+      // 选择对比基准
+      const refUsed = useSecondBest 
+        ? secondBestTimeAtDistance(dist)
+        : bestTimeAtDistance(dist)
+      
+      samples[idx].bestCompare = curUsed - refUsed
       prev = idx
     }
   }

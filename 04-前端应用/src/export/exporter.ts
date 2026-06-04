@@ -9,11 +9,12 @@
  *
  * 关键：HUD 渲染复用主题的 drawHud(canvas, frame)，预览即导出。
  */
-import {
+import {   
   Input, Output, BlobSource, BufferTarget,
   ALL_FORMATS, Mp4OutputFormat,
   CanvasSource, AudioBufferSource,
   QUALITY_HIGH,
+  CanvasSink, AudioBufferSink,
 } from 'mediabunny'
 import type { Theme, HudFrame } from '../themes'
 import type { Sample, VboMeta, LapInfo } from '../types'
@@ -66,8 +67,8 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   const audioTrack = await input.getPrimaryAudioTrack()
 
   // 输出尺寸
-  const W = opts.outputWidth ?? videoTrack.codedWidth
-  const H = opts.outputHeight ?? videoTrack.codedHeight
+  const W = opts.outputWidth ?? (await videoTrack.getDisplayWidth())
+  const H = opts.outputHeight ?? (await videoTrack.getDisplayHeight())
 
   // 2. 准备渲染 canvas（用 OffscreenCanvas 性能更好；fallback 普通 canvas）
   let canvas: OffscreenCanvas | HTMLCanvasElement
@@ -100,8 +101,6 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   if (audioTrack) {
     audioSource = new AudioBufferSource({
       codec: 'aac',
-      numberOfChannels: audioTrack.numberOfChannels,
-      sampleRate: audioTrack.sampleRate,
       bitrate: 128_000,
     })
     output.addAudioTrack(audioSource)
@@ -113,13 +112,11 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   const totalSec = range.endSec - range.startSec
   let lastProgress = 0
 
-  const videoSink = videoTrack.canvasSink ? videoTrack.canvasSink({ width: W, height: H }) : null
+  // 创建 CanvasSink 用于解码视频帧
+  const canvasSink = new CanvasSink(videoTrack, { width: W, height: H })
 
   // mediabunny 的帧迭代
-  for await (const wrapped of videoTrack.canvases({
-    startTimestamp: range.startSec,
-    endTimestamp: range.endSec,
-  })) {
+  for await (const wrapped of canvasSink.canvases(range.startSec, range.endSec)) {
     if (signal?.aborted) {
       await output.cancel()
       throw new Error('用户取消导出')
@@ -143,20 +140,16 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
       lastProgress = progress
     }
   }
-  // 抑制未使用警告
-  void videoSink
 
   // 5. 音频转码（直接复制）
   if (audioSource && audioTrack) {
-    for await (const buf of audioTrack.audioBuffers({
-      startTimestamp: range.startSec,
-      endTimestamp: range.endSec,
-    })) {
+    const audioBufferSink = new AudioBufferSink(audioTrack)
+    for await (const wrapped of audioBufferSink.buffers(range.startSec, range.endSec)) {
       if (signal?.aborted) {
         await output.cancel()
         throw new Error('用户取消导出')
       }
-      await audioSource.add(buf.audioBuffer, buf.timestamp - range.startSec)
+      await audioSource.add(wrapped.buffer)
     }
   }
 
