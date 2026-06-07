@@ -522,6 +522,7 @@ function drawCustomSpeedGauge(
   box: Box,
   frame: HudFrame,
   skin: WidgetSkin,
+  showCornerLabels = true,  // 是否显示弯道速度标签
 ) {
   const speed = frame.current?.speed ?? 0
   const gLong = frame.current?.gLong ?? 0  // 纵向G力
@@ -812,7 +813,9 @@ function drawCustomSpeedGauge(
   ctx.restore()
   
   // 绘制弯道速度标签（右侧）
-  drawCornerSpeedLabels(ctx, cx, cy, r, frame, currentTime)
+  if (showCornerLabels) {
+    drawCornerSpeedLabels(ctx, cx, cy, r, frame, currentTime)
+  }
 }
 
 export const customTheme: Theme = {
@@ -841,19 +844,19 @@ export const customNoLapTheme: Theme = {
   id: 'custom-no-lap',
   name: 'DSK专属（无圈速版）',
   preview: {
-    bg: '#1e293b', // 深蓝灰色
+    bg: '#1e293b',
     border: 'rgba(255,255,255,0.13)',
     text: '#ffffff',
-    accent: '#00e5ff', // 青色
+    accent: '#00e5ff',
   },
   drawHud(ctx, frame) {
-    // 右下角：自定义赛道地图（无背景、无TRACK字样）
+    // 右下角：自定义赛道地图
     drawCustomMiniMap(ctx, pctBox(frame, 'br', 0.02, 0.04, 0.18, 0.28), frame, MAP_SKIN)
     
     // 不绘制右上角圈速列表
     
-    // 左下角：自定义速度表
-    drawCustomSpeedGauge(ctx, pctBox(frame, 'bl', 0.02, 0.04, 0.18, 0.28), frame, TRANSPARENT_SKIN)
+    // 左下角：自定义速度表（不显示弯道速度标签）
+    drawCustomSpeedGauge(ctx, pctBox(frame, 'bl', 0.02, 0.04, 0.18, 0.28), frame, TRANSPARENT_SKIN, false)
   },
 }
 

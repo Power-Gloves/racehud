@@ -10,6 +10,8 @@ export interface ExportSettings {
   selectedLap?: number  // 选择的圈号（lap模式）
   customStart?: number  // 自定义起始时间（秒）
   customEnd?: number    // 自定义结束时间（秒）
+  bufferBefore: number  // 圈导出前置缓冲秒数
+  bufferAfter: number   // 圈导出后置缓冲秒数
 }
 
 interface Props {
@@ -225,6 +227,40 @@ export default function SettingsPanel({
         </Field>
       )}
 
+      {/* 单圈模式：前后缓冲设置 */}
+      {settings.exportMode === 'lap' && (
+        <div className="flex gap-2">
+          <Field label="前置缓冲（秒）">
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={0.5}
+              value={settings.bufferBefore}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value)
+                if (!isNaN(val)) onChange({ ...settings, bufferBefore: Math.max(0, val) })
+              }}
+              className="w-full px-3 py-2 text-sm bg-black-18 text-white rounded border border-gray-600 focus:border-primary focus:outline-none"
+            />
+          </Field>
+          <Field label="后置缓冲（秒）">
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={0.5}
+              value={settings.bufferAfter}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value)
+                if (!isNaN(val)) onChange({ ...settings, bufferAfter: Math.max(0, val) })
+              }}
+              className="w-full px-3 py-2 text-sm bg-black-18 text-white rounded border border-gray-600 focus:border-primary focus:outline-none"
+            />
+          </Field>
+        </div>
+      )}
+
       {/* 自定义模式：输入起止时间 */}
       {settings.exportMode === 'custom' && videoDuration && (
         <div className="space-y-2">
@@ -364,6 +400,8 @@ export function useDefaultSettings(): [ExportSettings, (s: ExportSettings) => vo
     unit: 'kph',
     resolution: '1080p',
     exportMode: 'full',
+    bufferBefore: 5,
+    bufferAfter: 5,
   })
 }
 

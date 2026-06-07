@@ -27,8 +27,8 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">RaceHUD v2.0.0</h2>
-              <p className="text-sm text-orange-100">2026年重大更新</p>
+              <h2 className="text-2xl font-bold text-white">RaceHUD v2.1.0</h2>
+              <p className="text-sm text-orange-100">2026年6月更新</p>
             </div>
           </div>
           <button
@@ -41,11 +41,42 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
 
         {/* 内容 */}
         <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-6 py-6 space-y-6">
+          {/* v2.1.0 新增 */}
+          <Section
+            icon="🎬"
+            title="v2.1.0 导出修复与优化"
+            badge="NEW"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <HighlightCard
+                icon="✅"
+                title="修复音视频同步"
+                desc="解决系统播放器/剪映无法正常播放的问题，时间轴长度现在准确"
+              />
+              <HighlightCard
+                icon="⏱️"
+                title="自定义缓冲时间"
+                desc="单圈导出支持自定义前置/后置缓冲秒数，默认前后各5秒"
+              />
+              <HighlightCard
+                icon="🎨"
+                title="DSK专属（无圈速版）"
+                desc="新增纯净版主题，去掉弯道速度标签，适合视频分享"
+              />
+              <HighlightCard
+                icon="🔧"
+                title="布局精细调整"
+                desc="左下角组件位置、速度数字、R值标签等多处细节优化"
+              />
+            </div>
+          </Section>
+
+          <div className="border-t border-[#303030]" />
+
           {/* DSK专属主题 */}
           <Section
             icon="🎨"
-            title="DSK专属主题上线"
-            badge="NEW"
+            title="v2.0.0 DSK专属主题"
           >
             <Feature>
               <FeatureTitle>左下角速度表</FeatureTitle>

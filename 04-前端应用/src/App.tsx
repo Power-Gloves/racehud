@@ -11,7 +11,7 @@ import { interpolateSampleAt, useLaps } from './hooks/useLaps'
 import { DEFAULT_THEME_ID, getTheme, type HudFrame } from './themes'
 import { autoSync, type AutoSyncResult } from './telemetry'
 
-const VERSION = 'v2.0.0'
+const VERSION = 'v2.1.0'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
  *  scale = innerWidth / 1920，浏览器 zoom 时 scale 同步变，物理大小保持不变 */
@@ -109,9 +109,9 @@ export default function App() {
         if (settings.selectedLap != null) {
           const lap = laps.find(l => l.lapNum === settings.selectedLap)
           if (lap) {
-            // 将GPS时间转换为视频时间，并添加前后缓冲（前3秒+后2秒）
-            const BUFFER_BEFORE = 3  // 前置缓冲3秒（看到入弯准备）
-            const BUFFER_AFTER = 2   // 后置缓冲2秒（看到出弯完成）
+            // 将GPS时间转换为视频时间，并添加用户自定义前后缓冲
+            const BUFFER_BEFORE = settings.bufferBefore ?? 5
+            const BUFFER_AFTER = settings.bufferAfter ?? 5
             
             const lapStartSec = (lap.startT - data.meta.startTime - dataOffsetMs + videoOffsetMs) / 1000
             const lapEndSec = (lap.endT - data.meta.startTime - dataOffsetMs + videoOffsetMs) / 1000

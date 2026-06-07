@@ -130,6 +130,7 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   // 4. 视频帧循环
   const totalSec = range.endSec - range.startSec
   let lastProgress = 0
+  let firstTimestamp: number | null = null  // 记录第一帧的时间戳，用于计算相对时间
 
   // 创建 CanvasSink 用于解码视频帧
   const canvasSink = new CanvasSink(videoTrack, { 
@@ -146,6 +147,9 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
     }
     const { canvas: frameCanvas, timestamp } = wrapped
 
+    // 记录第一帧的时间戳（确保相对时间戳从0开始）
+    if (firstTimestamp === null) firstTimestamp = timestamp
+
     // 画视频帧到设计画布（1920×1080）
     ctx.clearRect(0, 0, HUD_DESIGN_W, HUD_DESIGN_H)
     ;(ctx as CanvasRenderingContext2D).drawImage(frameCanvas as unknown as CanvasImageSource, 0, 0, HUD_DESIGN_W, HUD_DESIGN_H)
@@ -159,7 +163,9 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
     outputCtx.clearRect(0, 0, W, H)
     ;(outputCtx as CanvasRenderingContext2D).drawImage(canvas as unknown as CanvasImageSource, 0, 0, W, H)
 
-    await videoSource.add(timestamp, 1 / 60) // 帧时间戳 + 持续时间（粗略，实际由下一帧覆盖）
+    // 使用相对时间戳（从第一帧开始计算，确保从0开始）
+    const relativeTimestamp = timestamp - firstTimestamp
+    await videoSource.add(relativeTimestamp, 1 / 60)
 
     const progress = (timestamp - range.startSec) / totalSec
     if (progress - lastProgress > 0.005) {
