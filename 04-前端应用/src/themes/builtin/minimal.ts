@@ -1,11 +1,11 @@
 /**
  * 主题：极简
  *
- * 字体：Orbitron（赛车/航天感数字字体）+ Rajdhani（窄体科技标签）
- * 风格：
- *   - 速度仪表 / G 球 / 迷你赛道 = 透明叠加 + 径向暗光晕（保证亮背景下可读）
- *   - 顶部圈信息 / 右侧圈榜 = 半透明卡片背景
- *   - 圈榜紧凑、固定列宽，最近 6 圈
+ * 设计理念：真正的极简——克制、纯净、有呼吸感
+ *   - 纯白文字 + 单一青色点缀，无杂色
+ *   - 暗光晕轻量化，保证亮背景可读但不浑浊
+ *   - 速度（左下）为视觉主角，圈速差（顶部）为核心指标
+ *   - 地图、G球轻量呈现，不喧宾夺主
  */
 import type { Theme } from '../types'
 import {
@@ -18,32 +18,32 @@ import {
 const NUM_FONT = '"Aldrich", "Open Sans", sans-serif'
 const LABEL_FONT = '600 12px "Rajdhani", "Open Sans", sans-serif'
 
-/** 透明 skin：径向暗光晕 + 重文字阴影，无矩形背景但有可读性 */
+/** 透明 skin：轻量暗光晕 + 纯白文字，极简核心 */
 const TRANSPARENT_SKIN: WidgetSkin = {
-  glow: { color: '#000000', opacity: 0.20 },
+  glow: { color: '#000000', opacity: 0.14 },  // 从0.20降到0.14，更轻
   padding: 8,
   textColor: '#ffffff',
-  textDimColor: '#cbd5e1',
-  accentColor: '#22d3ee',
-  goodColor: '#10b981',
-  warnColor: '#f43f5e',
+  textDimColor: '#e2e8f0',   // 提亮 dim 色，减少灰浊感
+  accentColor: '#38bdf8',    // 更柔和的天青色
+  goodColor: '#34d399',
+  warnColor: '#fb7185',
   numFont: NUM_FONT,
   labelFont: LABEL_FONT,
-  textShadow: 'rgba(0,0,0,0.95)',
+  textShadow: 'rgba(0,0,0,0.9)',
 }
 
-/** 卡片 skin：保留半透明黑底，用于圈信息 / 圈榜（信息密集需要明确边界） */
+/** 卡片 skin：极简半透明黑底，弱边框，大圆角更柔和 */
 const CARD_SKIN: WidgetSkin = {
-  bg: 'rgba(0,0,0,0.55)',
-  border: 'rgba(255,255,255,0.10)',
+  bg: 'rgba(0,0,0,0.42)',         // 从0.55降到0.42，更通透
+  border: 'rgba(255,255,255,0.06)',  // 边框更弱
   borderWidth: 1,
-  radius: 6,
-  padding: 10,
+  radius: 12,                      // 从6增到12，更柔和现代
+  padding: 12,
   textColor: '#ffffff',
-  textDimColor: '#94a3b8',
-  accentColor: '#22d3ee',
-  goodColor: '#10b981',
-  warnColor: '#f43f5e',
+  textDimColor: '#cbd5e1',
+  accentColor: '#38bdf8',
+  goodColor: '#34d399',
+  warnColor: '#fb7185',
   numFont: NUM_FONT,
   labelFont: LABEL_FONT,
   textShadow: 'rgba(0,0,0,0.85)',
@@ -53,17 +53,21 @@ export const minimalTheme: Theme = {
   id: 'minimal',
   name: '极简',
   preview: {
-    bg: '#000000',
+    bg: '#0a0a0a',
     border: 'rgba(255,255,255,0.13)',
     text: '#ffffff',
-    accent: '#22d3ee',
+    accent: '#38bdf8',
   },
   drawHud(ctx, frame) {
-    drawMiniMap(ctx, pctBox(frame, 'tl', 0.02, 0.02, 0.13, 0.20), frame, TRANSPARENT_SKIN)
-    drawLapInfo(ctx, pctBox(frame, 'tc', 0, 0.02, 0.32, 0.10), frame, CARD_SKIN)
-    // 圈榜：宽度收窄到 12%，高度也收窄；最近 6 圈
-    drawLapList(ctx, pctBox(frame, 'tr', 0.02, 0.02, 0.16, 0.22), frame, CARD_SKIN, { maxLines: 4 })
-    drawSpeedGauge(ctx, pctBox(frame, 'bl', 0.02, 0.04, 0.16, 0.22), frame, TRANSPARENT_SKIN)
-    drawGForceBall(ctx, pctBox(frame, 'br', 0.02, 0.04, 0.13, 0.20), frame, TRANSPARENT_SKIN)
+    // 左上：迷你地图（轻量透明，不用卡片）
+    drawMiniMap(ctx, pctBox(frame, 'tl', 0.025, 0.03, 0.12, 0.19), frame, TRANSPARENT_SKIN)
+    // 顶部居中：圈速核心信息（极简卡片）
+    drawLapInfo(ctx, pctBox(frame, 'tc', 0, 0.03, 0.30, 0.10), frame, CARD_SKIN)
+    // 右上：圈榜（极简卡片，BEST + 最近4圈）
+    drawLapList(ctx, pctBox(frame, 'tr', 0.025, 0.03, 0.15, 0.22), frame, CARD_SKIN, { maxRecentLines: 4 })
+    // 左下：速度（视觉主角，透明叠加）
+    drawSpeedGauge(ctx, pctBox(frame, 'bl', 0.025, 0.05, 0.17, 0.23), frame, TRANSPARENT_SKIN)
+    // 右下：G球（轻量透明）
+    drawGForceBall(ctx, pctBox(frame, 'br', 0.025, 0.05, 0.12, 0.19), frame, TRANSPARENT_SKIN)
   },
 }

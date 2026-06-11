@@ -89,75 +89,84 @@ export function drawSpeedGauge(
   drawCard(ctx, box, skin)
 
   const cx = box.x + box.w / 2
-  const cy = box.y + box.h * 0.62
-  const r = Math.min(box.w, box.h) * 0.42
-  const startAng = Math.PI            // 180° 左
-  const endAng = 2 * Math.PI          // 360°/0° 右
+  const cy = box.y + box.h * 0.52
+  const r = Math.min(box.w, box.h * 0.92) * 0.42
+  // 弧从 8 点钟(140°)到 2 点钟(320°)，开口朝底部，更现代的仪表感
+  const startAng = (140 * Math.PI) / 180
+  const endAng = (320 * Math.PI) / 180
   const fillAng = startAng + (endAng - startAng) * ratio
+  const lineW = Math.max(5, r * 0.13)
 
   ctx.save()
   ctx.lineCap = 'round'
   // 背景轨道
   ctx.beginPath()
   ctx.arc(cx, cy, r, startAng, endAng)
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-  ctx.lineWidth = Math.max(4, r * 0.12)
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'
+  ctx.lineWidth = lineW
   ctx.stroke()
-  // 填充弧（颜色按速度区间渐变）
-  const color = lerpColor([
-    { at: 0, rgb: [16, 185, 129] },
-    { at: 0.5, rgb: [250, 204, 21] },
-    { at: 1, rgb: [239, 68, 68] },
-  ], ratio)
+  // 填充弧：沿弧线方向的渐变（绿→黄→红，速度高低的通用表达）
+  const sx = cx + Math.cos(startAng) * r
+  const sy = cy + Math.sin(startAng) * r
+  const ex = cx + Math.cos(endAng) * r
+  const ey = cy + Math.sin(endAng) * r
+  const grad = ctx.createLinearGradient(sx, sy, ex, ey)
+  grad.addColorStop(0, '#34d399')
+  grad.addColorStop(0.5, '#fbbf24')
+  grad.addColorStop(1, '#ef4444')
   ctx.beginPath()
   ctx.arc(cx, cy, r, startAng, fillAng)
-  ctx.strokeStyle = color
-  if (skin.textShadow) { ctx.shadowColor = color; ctx.shadowBlur = 10 }
+  ctx.strokeStyle = grad
+  ctx.lineWidth = lineW
+  if (skin.textShadow) { ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 6 }
   ctx.stroke()
   ctx.restore()
 
-  // SPEED 标签
+  // SPEED 标签（弧中心上方）
   ctx.save()
   ctx.font = skin.labelFont
   ctx.fillStyle = skin.textDimColor
   ctx.textAlign = 'center'
-  ctx.textBaseline = 'top'
+  ctx.textBaseline = 'middle'
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 4 }
-  ctx.fillText('SPEED', cx, box.y + box.h * 0.10)
+  ctx.fillText('SPEED', cx, cy - r * 0.42)
   ctx.restore()
 
-  // 数字（每字符固定槽宽，彻底不抖）
+  // 数字（弧中心，每字符固定槽宽，彻底不抖）
   ctx.save()
-  const numFontSize = Math.round(box.h * 0.36)
+  const numFontSize = Math.round(box.h * 0.30)
   ctx.font = `700 ${numFontSize}px ${skin.numFont}`
   ctx.fillStyle = skin.textColor
   ctx.textBaseline = 'middle'
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 6 }
   const charW = numFontSize * 0.62
-  drawFixedWidthText(ctx, String(Math.round(speed)), cx, cy + r * 0.15, charW, 'center')
+  drawFixedWidthText(ctx, String(Math.round(speed)), cx, cy + r * 0.05, charW, 'center')
   ctx.restore()
 
-  // 单位
+  // 单位（数字下方）
   ctx.save()
   ctx.font = skin.labelFont
   ctx.fillStyle = skin.textDimColor
   ctx.textAlign = 'center'
-  ctx.textBaseline = 'top'
+  ctx.textBaseline = 'middle'
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 4 }
   const unitText = (frame.unit === 'mph' ? 'MPH' : 'KM/H')
-  ctx.fillText(unitText, cx, cy + r * 0.45)
+  ctx.fillText(unitText, cx, cy + r * 0.42)
   ctx.restore()
 
-  // 0 / max 刻度
+  // 0 / max 刻度（弧两端外侧）
   ctx.save()
   ctx.font = skin.labelFont
   ctx.fillStyle = skin.textDimColor
   ctx.textBaseline = 'top'
+  ctx.textAlign = 'center'
   if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 4 }
-  ctx.textAlign = 'left'
-  ctx.fillText('0', cx - r, cy + 6)
-  ctx.textAlign = 'right'
-  ctx.fillText(String(Math.round(maxSpd)), cx + r, cy + 6)
+  const z0x = cx + Math.cos(startAng) * (r + lineW)
+  const z0y = cy + Math.sin(startAng) * (r + lineW)
+  ctx.fillText('0', z0x, z0y)
+  const zmx = cx + Math.cos(endAng) * (r + lineW)
+  const zmy = cy + Math.sin(endAng) * (r + lineW)
+  ctx.fillText(String(Math.round(maxSpd)), zmx, zmy)
   ctx.restore()
 }
 
@@ -207,14 +216,21 @@ export function drawLapInfo(
     ctx.fillText(f.label, cx, box.y + pad)
     ctx.restore()
 
-    // value
+    // value：字号同时受高度和列宽约束，长文本自动缩小防溢出/重叠
     ctx.save()
-    const valueFont = Math.round(contentH * 0.50)
+    let valueFont = Math.round(contentH * 0.46)
+    const charRatio = 0.62
+    // 限制文本总宽不超过列宽的 84%
+    const maxTextW = colW * 0.84
+    const textW = f.value.length * valueFont * charRatio
+    if (textW > maxTextW) {
+      valueFont = Math.floor(maxTextW / (f.value.length * charRatio))
+    }
     ctx.font = `700 ${valueFont}px ${skin.numFont}`
     ctx.fillStyle = f.color
     ctx.textBaseline = 'middle'
     if (skin.textShadow) { ctx.shadowColor = skin.textShadow; ctx.shadowBlur = 6 }
-    drawFixedWidthText(ctx, f.value, cx, box.y + contentH * 0.65, valueFont * 0.65, 'center')
+    drawFixedWidthText(ctx, f.value, cx, box.y + contentH * 0.66, valueFont * charRatio, 'center')
     ctx.restore()
   }
 
@@ -316,14 +332,13 @@ export function drawLapList(
   const start = Math.max(0, end - maxRecent)
   const recent = valid.slice(start, end)
 
-  // 行高/字号根据 widget 高度动态算（让盒子刚好填满）
+  // 行高/字号根据 widget 尺寸动态算（让盒子刚好填满且不重叠）
   const totalRows = (bestLap ? 1 : 0) + recent.length
   const availH = box.h - pad * 2 - labelFontSize - 10
-  // 字号上限 22；行高上限 = 字号 × 1.6（避免行数少时被拉得过开）
-  const fontSize = 22
-  const maxLineH = fontSize * 1.6
-  const evenH = totalRows > 0 ? availH / totalRows : maxLineH
-  const lineH = Math.min(evenH, maxLineH)
+  const evenH = totalRows > 0 ? availH / totalRows : 35
+  const lineH = Math.min(evenH, 35)
+  // 字号自适应：受行高(×0.6)与盒宽(×0.15)双重约束，上限22下限9，防重叠
+  const fontSize = Math.max(9, Math.min(22, Math.floor(lineH * 0.6), Math.floor(box.w * 0.15)))
   const startY = box.y + pad + labelFontSize + 8
 
   // 三列布局：圈号占左 22%，圈时占中 50%，delta 占右 28%
@@ -467,17 +482,32 @@ export function drawGForceBall(
   const curG = Math.hypot(gLat, gLong)
   const ratio = Math.max(0, Math.min(1, curG / maxG))
 
-  // 1. 外环背景
+  // 1. 三层同心圆背景（黑色半透明，透明度递减，立体感）
+  const rings = [
+    { rr: r, alpha: 0.42 },
+    { rr: r * 0.72, alpha: 0.34 },
+    { rr: r * 0.44, alpha: 0.26 },
+  ]
+  for (const ring of rings) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, ring.rr, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(0,0,0,${ring.alpha})`
+    ctx.fill()
+    ctx.restore()
+  }
+
+  // 2. 外环背景轨道
   ctx.save()
   ctx.strokeStyle = skin.textColor
-  ctx.globalAlpha = 0.20
+  ctx.globalAlpha = 0.18
   ctx.lineWidth = 3
   ctx.beginPath()
-  ctx.arc(cx, cy, r * 1.20, -Math.PI / 2, Math.PI * 1.5)
+  ctx.arc(cx, cy, r * 1.18, -Math.PI / 2, Math.PI * 1.5)
   ctx.stroke()
   ctx.restore()
 
-  // 2. 外环填充（按当前 G / maxG）
+  // 3. 外环填充（按当前 G / maxG）
   if (ratio > 0.001) {
     ctx.save()
     ctx.strokeStyle = skin.accentColor
@@ -485,32 +515,33 @@ export function drawGForceBall(
     ctx.lineCap = 'round'
     if (skin.textShadow) { ctx.shadowColor = skin.accentColor; ctx.shadowBlur = 6 }
     ctx.beginPath()
-    ctx.arc(cx, cy, r * 1.20, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio)
+    ctx.arc(cx, cy, r * 1.18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio)
     ctx.stroke()
     ctx.restore()
   }
 
-  // 3. 内圈：刻度环（白色半透明）
+  // 4. 十字准线（白色半透明）
   ctx.save()
   ctx.strokeStyle = skin.textColor
-  ctx.globalAlpha = 0.40
+  ctx.globalAlpha = 0.28
   ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2)
-  ctx.stroke()
-  // 十字
   ctx.beginPath()
   ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy)
   ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r)
   ctx.stroke()
   ctx.restore()
 
-  // 4. 当前 G 点位置
+  // 5. 当前 G 点位置（双层圆点）
   const dx = Math.max(-1, Math.min(1, gLat / maxG)) * r
   const dy = Math.max(-1, Math.min(1, -gLong / maxG)) * r
+  ctx.save()
+  ctx.fillStyle = skin.accentColor
+  ctx.globalAlpha = 0.3
+  if (skin.textShadow) { ctx.shadowColor = skin.accentColor; ctx.shadowBlur = 10 }
+  ctx.beginPath()
+  ctx.arc(cx + dx, cy + dy, Math.max(6, r * 0.18), 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
   ctx.save()
   ctx.fillStyle = skin.accentColor
   if (skin.textShadow) { ctx.shadowColor = skin.accentColor; ctx.shadowBlur = 8 }
@@ -519,7 +550,7 @@ export function drawGForceBall(
   ctx.fill()
   ctx.restore()
 
-  // 5. 顶部 label + 底部当前 G 数值
+  // 6. 顶部 label + 底部当前 G 数值
   ctx.save()
   ctx.font = skin.labelFont
   ctx.fillStyle = skin.textDimColor
