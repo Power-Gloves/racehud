@@ -12,12 +12,17 @@
 import {   
   Input, Output, BlobSource, BufferTarget,
   ALL_FORMATS, Mp4OutputFormat,
-  CanvasSource, AudioBufferSource,
-  QUALITY_HIGH,
+  CanvasSource, AudioSampleSource, AudioSample,
+  QUALITY_HIGH, canEncodeAudio,
   CanvasSink, AudioBufferSink,
 } from 'mediabunny'
+import { videoToGps, validateRange } from '../telemetry/time'
+import { interpolateSampleAt } from '../hooks/useLaps'
 import type { Theme, HudFrame } from '../themes'
 import type { Sample, VboMeta, LapInfo } from '../types'
+import { renderHud } from '../themes/render'
+import { loadHudFonts } from '../themes/fonts'
+import type { StartLightsCue } from '../themes/startLights'
 
 export interface ExportRange {
   /** 起点（视频内秒数） */
@@ -41,6 +46,7 @@ export interface ExportOptions {
   unit?: 'kph' | 'mph'
 
   theme: Theme
+  startLights?: StartLightsCue
   range: ExportRange
 
   /** 输出分辨率（不传则用原视频分辨率） */
@@ -55,15 +61,19 @@ export interface ExportOptions {
 
 /** 启动一次导出。Promise resolve 时已下载。 */
 export async function exportVideo(opts: ExportOptions): Promise<Blob> {
-  const { videoFile, range, theme, onProgress, signal } = opts
+  await loadHudFonts()
+  const { videoFile, theme, onProgress, signal } = opts
+  if (signal?.aborted) throw new Error('用户取消导出')
 
   // 1. 打开输入视频
   const input = new Input({
     source: new BlobSource(videoFile),
     formats: ALL_FORMATS,
   })
+  try {
   const videoTrack = await input.getPrimaryVideoTrack()
   if (!videoTrack) throw new Error('视频没有视频轨')
+  const range = validateRange(opts.range.startSec, opts.range.endSec, await input.computeDuration())
   const audioTrack = await input.getPrimaryAudioTrack()
 
   // 输出尺寸
@@ -109,6 +119,7 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
     format: new Mp4OutputFormat(),
     target: new BufferTarget(),
   })
+  try {
   const videoSource = new CanvasSource(outputCanvas as HTMLCanvasElement, {
     codec: 'avc',
     bitrate: QUALITY_HIGH,
@@ -116,10 +127,13 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   output.addVideoTrack(videoSource)
 
   // 音频直接转码（保留原音轨）
-  let audioSource: AudioBufferSource | null = null
+  let audioSource: AudioSampleSource | null = null
   if (audioTrack) {
-    audioSource = new AudioBufferSource({
-      codec: 'aac',
+    const audioConfig = { numberOfChannels: await audioTrack.getNumberOfChannels(), sampleRate: await audioTrack.getSampleRate(), bitrate: 128_000 }
+    const codec = await canEncodeAudio('aac', audioConfig) ? 'aac' : await canEncodeAudio('opus', audioConfig) ? 'opus' : null
+    if (!codec) throw new Error('当前浏览器无法编码音频，请更换支持 AAC 或 Opus 的浏览器')
+    audioSource = new AudioSampleSource({
+      codec,
       bitrate: 128_000,
     })
     output.addAudioTrack(audioSource)
@@ -130,7 +144,7 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   // 4. 视频帧循环
   const totalSec = range.endSec - range.startSec
   let lastProgress = 0
-  let firstTimestamp: number | null = null  // 记录第一帧的时间戳，用于计算相对时间
+  let frameCount = 0
 
   // 创建 CanvasSink 用于解码视频帧
   const canvasSink = new CanvasSink(videoTrack, { 
@@ -145,27 +159,29 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
       await output.cancel()
       throw new Error('用户取消导出')
     }
-    const { canvas: frameCanvas, timestamp } = wrapped
+    const { canvas: frameCanvas, timestamp, duration } = wrapped
 
-    // 记录第一帧的时间戳（确保相对时间戳从0开始）
-    if (firstTimestamp === null) firstTimestamp = timestamp
+    const frameStart = Math.max(timestamp, range.startSec)
+    const frameEnd = Math.min(timestamp + duration, range.endSec)
+    if (frameEnd <= frameStart) continue
+    frameCount++
 
     // 画视频帧到设计画布（1920×1080）
     ctx.clearRect(0, 0, HUD_DESIGN_W, HUD_DESIGN_H)
     ;(ctx as CanvasRenderingContext2D).drawImage(frameCanvas as unknown as CanvasImageSource, 0, 0, HUD_DESIGN_W, HUD_DESIGN_H)
 
     // 画 HUD（用主题，跟预览一致）- 固定使用设计尺寸
-    const gpsT = opts.data.meta.startTime + (timestamp * 1000 - opts.videoOffsetMs) + opts.dataOffsetMs
+    const gpsT = videoToGps(frameStart, opts.data.meta.startTime, opts.dataOffsetMs, opts.videoOffsetMs)
     const hudFrame = buildHudFrame(HUD_DESIGN_W, HUD_DESIGN_H, gpsT, opts)
-    theme.drawHud(ctx as CanvasRenderingContext2D, hudFrame)
+    renderHud(ctx as CanvasRenderingContext2D, theme, hudFrame)
 
     // 将设计画布缩放到目标分辨率
     outputCtx.clearRect(0, 0, W, H)
     ;(outputCtx as CanvasRenderingContext2D).drawImage(canvas as unknown as CanvasImageSource, 0, 0, W, H)
 
     // 使用相对时间戳（从第一帧开始计算，确保从0开始）
-    const relativeTimestamp = timestamp - firstTimestamp
-    await videoSource.add(relativeTimestamp, 1 / 60)
+    const relativeTimestamp = frameStart - range.startSec
+    await videoSource.add(relativeTimestamp, frameEnd - frameStart)
 
     const progress = (timestamp - range.startSec) / totalSec
     if (progress - lastProgress > 0.005) {
@@ -174,7 +190,9 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
     }
   }
 
-  // 5. 音频转码（直接复制）
+  if (!frameCount) throw new Error('导出范围内没有可解码的视频帧')
+
+  // 5. 音频使用同一裁剪起点，并裁掉首尾音频块的范围外采样。
   if (audioSource && audioTrack) {
     const audioBufferSink = new AudioBufferSink(audioTrack)
     for await (const wrapped of audioBufferSink.buffers(range.startSec, range.endSec)) {
@@ -182,15 +200,33 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
         await output.cancel()
         throw new Error('用户取消导出')
       }
-      await audioSource.add(wrapped.buffer)
+      const { buffer, timestamp } = wrapped
+      const first = Math.max(0, Math.ceil((range.startSec - timestamp) * buffer.sampleRate))
+      const last = Math.min(buffer.length, Math.ceil((range.endSec - timestamp) * buffer.sampleRate))
+      if (last <= first) continue
+      const trimmed = new AudioBuffer({ length: last - first, numberOfChannels: buffer.numberOfChannels, sampleRate: buffer.sampleRate })
+      for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+        trimmed.copyToChannel(buffer.getChannelData(channel).subarray(first, last), channel)
+      }
+      for (const sample of AudioSample.fromAudioBuffer(trimmed, Math.max(0, timestamp + first / buffer.sampleRate - range.startSec))) {
+        try { await audioSource.add(sample) } finally { sample.close() }
+      }
     }
   }
 
+  if (signal?.aborted) throw new Error('用户取消导出')
   await output.finalize()
   onProgress?.(1)
 
   const blob = new Blob([output.target.buffer!], { type: 'video/mp4' })
   return blob
+  } catch (e) {
+    await output.cancel().catch(() => {})
+    throw e
+  }
+  } finally {
+    input.dispose()
+  }
 }
 
 /** 建议浏览器下载 blob 为指定文件名 */
@@ -212,7 +248,7 @@ function buildHudFrame(
   opts: ExportOptions,
 ): HudFrame {
   const samples = opts.data.samples
-  const current = findSampleAt(samples, playheadT)
+  const current = interpolateSampleAt(samples, playheadT)
   // current lap
   let currentLap: LapInfo | null = null
   for (const l of opts.laps) {
@@ -231,39 +267,6 @@ function buildHudFrame(
     currentLap,
     finishLine: opts.finishLine,
     unit: opts.unit,
-  }
-}
-
-function findSampleAt(samples: Sample[], t: number): Sample | null {
-  if (samples.length === 0) return null
-  if (t <= samples[0].t) return samples[0]
-  if (t >= samples[samples.length - 1].t) return samples[samples.length - 1]
-  let lo = 0, hi = samples.length - 1
-  while (lo + 1 < hi) {
-    const mid = (lo + hi) >> 1
-    if (samples[mid].t <= t) lo = mid
-    else hi = mid
-  }
-  // 线性插值（跟 useLaps.interpolateSampleAt 一致逻辑，但导出场景简化）
-  const a = samples[lo], b = samples[hi]
-  const span = b.t - a.t
-  if (span <= 0) return a
-  const k = (t - a.t) / span
-  return {
-    ...a,
-    t,
-    lat: a.lat + (b.lat - a.lat) * k,
-    lng: a.lng + (b.lng - a.lng) * k,
-    speed: a.speed + (b.speed - a.speed) * k,
-    heading: a.heading + (b.heading - a.heading) * k,
-    altitude: a.altitude + (b.altitude - a.altitude) * k,
-    sats: a.sats,
-    acceleration: a.acceleration + (b.acceleration - a.acceleration) * k,
-    gLong: a.gLong + (b.gLong - a.gLong) * k,
-    gLat: a.gLat + (b.gLat - a.gLat) * k,
-    distance: a.distance + (b.distance - a.distance) * k,
-    lapNum: a.lapNum,
-    lapTimeInLap: (a.lapTimeInLap ?? 0) + ((b.lapTimeInLap ?? 0) - (a.lapTimeInLap ?? 0)) * k,
-    bestCompare: (a.bestCompare ?? 0) + ((b.bestCompare ?? 0) - (a.bestCompare ?? 0)) * k,
+    startLights: opts.startLights,
   }
 }

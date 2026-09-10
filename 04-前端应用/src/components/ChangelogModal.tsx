@@ -27,8 +27,8 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">RaceHUD v2.1.0</h2>
-              <p className="text-sm text-orange-100">2026年6月更新</p>
+              <h2 className="text-2xl font-bold text-white">RaceHUD v2.2.0</h2>
+              <p className="text-sm text-orange-100">2026年9月 · 六套全新 HUD 设计</p>
             </div>
           </div>
           <button
@@ -41,11 +41,23 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
 
         {/* 内容 */}
         <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-6 py-6 space-y-6">
-          {/* v2.1.0 新增 */}
+          <Section icon="🎨" title="v2.2.0 六种布局，六种风格" badge="NEW">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <HighlightCard icon="01" title="极点转播 / 精密计时" desc="朱红转播记分牌与冷银中央仪表，突出实时速度和圈时。" />
+              <HighlightCard icon="02" title="拉力路书 / 耐力工程" desc="琥珀纵向导航与底部工程数据带；数据带附带最近 8 秒速度曲线。" />
+              <HighlightCard icon="03" title="轻量尾流 / 经典勒芒" desc="酸柠绿开放排版与奶油暗红复古表盘，适合不同视频氛围。" />
+              <HighlightCard icon="04" title="保留极简与两个 DSK" desc="原版视觉保留；选择器增加布局缩略图，新主题字体随应用打包。" />
+            </div>
+          </Section>
+          <Section icon="🏁" title="两种 GPS 模式与单圈功能" badge="UPDATE">
+            <p className="text-slate-300 leading-7">DJI + 外置 GPS 补齐起跑线调整、分圈和按圈导出流程。单圈起点前可显示五盏红灯，冲线同时熄灭；时间轴增加每圈行车线长度与圈内已行驶距离，距离仅在系统显示。</p>
+            <p className="mt-3 text-sm text-slate-400">修复时间偏移、尾圈参与最佳圈、低速漏分圈及文件切换时的异步覆盖。当前 DJI 实拍验证覆盖 Action 4；其他机型、长视频 4K 和 DSK 历史状态问题仍需进一步验证。</p>
+          </Section>
+          {/* 以下为旧版历史记录 */}
           <Section
             icon="🎬"
             title="v2.1.0 导出修复与优化"
-            badge="NEW"
+            badge="历史"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <HighlightCard

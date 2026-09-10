@@ -7,6 +7,7 @@
  * 每周新增主题 = 加一个新的 Theme 对象，零其它代码改动。
  */
 import type { Sample, VboMeta, LapInfo } from '../types'
+import type { StartLightsCue } from './startLights'
 
 /** 一帧的渲染上下文（主题画 HUD 时拿到的数据） */
 export interface HudFrame {
@@ -33,6 +34,7 @@ export interface HudFrame {
 
   /** 用户偏好（单位等） */
   unit?: 'kph' | 'mph'
+  startLights?: StartLightsCue
 }
 
 /** 主题预览色块（缩略图用） */

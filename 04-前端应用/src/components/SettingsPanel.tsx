@@ -12,6 +12,7 @@ export interface ExportSettings {
   customEnd?: number    // 自定义结束时间（秒）
   bufferBefore: number  // 圈导出前置缓冲秒数
   bufferAfter: number   // 圈导出后置缓冲秒数
+  startLights: boolean  // 单圈起点前的五盏红灯
 }
 
 interface Props {
@@ -81,7 +82,7 @@ export default function SettingsPanel({
                 <button
                   onClick={() => onAutoLapPosChange(null)}
                   className="text-[10px] px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#3a3a3a] text-gray-66 hover:text-white shrink-0"
-                  title="重置为算法自动选择"
+                  title="恢复设备圈号 / 自动选择"
                 >
                   Auto
                 </button>
@@ -135,7 +136,7 @@ export default function SettingsPanel({
               {/* 说明文字 */}
               <div className="text-[10px] text-gray-66">
                 {autoLapPos == null 
-                  ? '💡 算法自动检测起跑线位置' 
+                  ? '💡 默认使用设备圈号（如有），否则自动分圈；移动滑块重新分圈'
                   : `📍 当前位置: 沿轨迹 ${Math.round(autoLapPos * 100)}%`}
               </div>
             </div>
@@ -194,7 +195,7 @@ export default function SettingsPanel({
         />
         {settings.exportMode === 'custom' && (
           <div className="mt-2 text-[10px] text-cyan-300">
-            💡 在时间轴上拖动范围选择器（即将推出）
+            在下方输入视频中的起止秒数
           </div>
         )}
       </Field>
@@ -258,6 +259,23 @@ export default function SettingsPanel({
               className="w-full px-3 py-2 text-sm bg-black-18 text-white rounded border border-gray-600 focus:border-primary focus:outline-none"
             />
           </Field>
+        </div>
+      )}
+
+      {settings.exportMode === 'lap' && (
+        <div className="rounded-lg border border-[#404243] bg-black-18 px-3 py-3">
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
+            <input
+              type="checkbox"
+              checked={settings.startLights ?? true}
+              onChange={(e) => onChange({ ...settings, startLights: e.target.checked })}
+              className="accent-orange-400"
+            />
+            冲线红灯
+          </label>
+          <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+            冲线前最多 5 秒依次亮起，冲线时同时熄灭。预览与导出同步；无前置缓冲时不显示。
+          </p>
         </div>
       )}
 
@@ -402,6 +420,7 @@ export function useDefaultSettings(): [ExportSettings, (s: ExportSettings) => vo
     exportMode: 'full',
     bufferBefore: 5,
     bufferAfter: 5,
+    startLights: true,
   })
 }
 

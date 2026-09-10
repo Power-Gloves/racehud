@@ -48,18 +48,13 @@ export function useLaps(samples: Sample[], playheadT: number) {
     }
     laps.sort((a, b) => a.lapNum - b.lapNum)
 
-    // 计算有效计时圈：排除第 0 圈（出 pit/暖胎）和残缺圈（录制头尾的不完整片段）
-    // 残缺圈判定：圈时明显短于正常圈。用所有 lapNum>0 圈时的中位数做基准，
-    // 只保留圈时 >= 中位数 70% 的圈（残缺的最后一截、跑歪的 outlap 都会被剔除）
-    const positiveLaps = laps.filter(l => l.lapNum > 0 && l.lapTime > 5)
-    let valid: LapInfo[] = []
-    if (positiveLaps.length > 0) {
-      const times = positiveLaps.map(l => l.lapTime).sort((a, b) => a - b)
-      const median = times[Math.floor(times.length / 2)]
-      valid = positiveLaps.filter(l => l.lapTime >= median * 0.7 && l.lapTime <= median * 1.3)
-      // 兜底：如果过滤后空了（圈时差异极大），退回原始正圈集合
-      if (valid.length === 0) valid = positiveLaps
+    // 相邻圈的过线时间是完整圈边界，不能用最后一个采样点代替。
+    for (let i = 0; i < laps.length - 1; i++) {
+      laps[i].endT = laps[i + 1].startT
+      laps[i].lapTime = (laps[i].endT - laps[i].startT) / 1000
     }
+    // 最后一段没有结束过线证据；首段若起点早于录制，也是不完整圈。
+    const valid = laps.slice(0, -1).filter(l => l.lapNum > 0 && l.lapTime > 0 && l.startT >= samples[0].t)
 
     let bestLap: LapInfo | null = null
     if (valid.length > 0) {
@@ -70,7 +65,7 @@ export function useLaps(samples: Sample[], playheadT: number) {
     // 找当前圈
     let currentLap: LapInfo | null = null
     for (const l of laps) {
-      if (playheadT >= l.startT && playheadT <= l.endT) {
+      if (playheadT >= l.startT && playheadT < l.endT) {
         l.isCurrent = true
         currentLap = l
         break

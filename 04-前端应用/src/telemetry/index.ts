@@ -63,12 +63,26 @@ export async function autoSync(
   videoFile: File,
   dataSamples: { t: number; acceleration?: number; gLong?: number; gLat?: number; speed: number }[],
   onProgress?: (ratio: number) => void,
+  signal?: AbortSignal,
 ): Promise<AutoSyncResult | null> {
   const vt = await extractVideoTelemetry(videoFile, onProgress)
+  if (signal?.aborted) throw new Error('已取消对齐')
   if (!vt) return null
 
   const dataAccel: AccelSignal = accelFromSamples(dataSamples)
-  const result = alignAccel(vt.accel, dataAccel)
+  const result = await new Promise<AlignResult>((resolve, reject) => {
+    const worker = new Worker(new URL('./align.worker.ts', import.meta.url), { type: 'module' })
+    const abort = () => { worker.terminate(); reject(new Error('已取消对齐')) }
+    signal?.addEventListener('abort', abort, { once: true })
+    worker.onmessage = ({ data }) => {
+      signal?.removeEventListener('abort', abort)
+      worker.terminate()
+      if (data.error) reject(new Error(data.error))
+      else resolve(data.result)
+    }
+    worker.onerror = (event) => { signal?.removeEventListener('abort', abort); worker.terminate(); reject(new Error(event.message)) }
+    worker.postMessage({ video: vt.accel, data: dataAccel })
+  })
 
   return { ...result, videoTelemetry: vt }
 }

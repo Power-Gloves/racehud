@@ -5,7 +5,7 @@ import { VideoFile } from './VideoUploader'
 interface Props {
   data: ParsedVbo | null
   video: VideoFile | null
-  onParsed: (d: ParsedVbo) => void
+  onTelemetryFile: (file: File) => void
   onError: (msg: string) => void
   onChooseVideo: (v: VideoFile | null) => void
   onClearData: () => void
@@ -22,19 +22,9 @@ interface Props {
  *   - 未选：虚线按钮「+ 选择文件」
  *   - 已选：文件名 · 元数据 · 关闭按钮
  */
-export default function LibraryPanel({ data, video, onParsed, onError, onChooseVideo, onClearData, mode = 'video+data', onModeChange }: Props) {
+export default function LibraryPanel({ data, video, onTelemetryFile, onError, onChooseVideo, onClearData, mode = 'video+data', onModeChange }: Props) {
   const dataInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-
-  async function uploadTelemetry(file: File) {
-    try {
-      const { parseTelemetryFile } = await import('../telemetry')
-      onParsed(await parseTelemetryFile(file))
-      onError('')
-    } catch (e: unknown) {
-      onError(`解析失败：${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
 
   function chooseVideo(file: File) {
     if (video?.url) URL.revokeObjectURL(video.url)
@@ -57,7 +47,7 @@ export default function LibraryPanel({ data, video, onParsed, onError, onChooseV
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]
-          if (f) uploadTelemetry(f)
+          if (f) onTelemetryFile(f)
           e.target.value = ''
         }}
       />

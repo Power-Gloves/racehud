@@ -7,19 +7,13 @@
  *   完成。零其它代码改动。
  */
 import { minimalTheme } from './builtin/minimal'
-import { neonTheme } from './builtin/neon'
-import { f1Theme } from './builtin/f1'
-import { jdmTheme } from './builtin/jdm'
-import { raceTheme } from './builtin/race'
+import { studioThemes } from './studio/themes'
 import { customTheme, customNoLapTheme } from './builtin/custom'
 import type { Theme } from './types'
 
 export const THEMES: Theme[] = [
   minimalTheme,
-  neonTheme,
-  f1Theme,
-  jdmTheme,
-  raceTheme,
+  ...studioThemes,
   customTheme,
   customNoLapTheme,
 ]
@@ -27,7 +21,8 @@ export const THEMES: Theme[] = [
 export const DEFAULT_THEME_ID = 'minimal'
 
 export function getTheme(id: string): Theme {
-  return THEMES.find(t => t.id === id) ?? THEMES[0]
+  const legacy: Record<string, string> = { neon: 'slipstream', f1: 'apex', jdm: 'roadbook', race: 'chrono' }
+  return THEMES.find(t => t.id === (legacy[id] ?? id)) ?? THEMES[0]
 }
 
 export type { Theme, HudFrame, ThemePreview } from './types'

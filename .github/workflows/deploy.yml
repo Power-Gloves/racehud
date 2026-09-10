@@ -33,8 +33,12 @@ jobs:
         run: npm ci
         working-directory: 04-前端应用
 
-      - name: Build
-        run: npm run build
+      - name: 回归测试
+        run: npm test
+        working-directory: 04-前端应用
+
+      - name: 类型检查与构建
+        run: npm run build:check
         working-directory: 04-前端应用
 
       - name: Setup Pages

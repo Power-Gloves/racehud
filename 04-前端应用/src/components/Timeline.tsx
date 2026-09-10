@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LapInfo, Sample } from '../types'
+import { gpsToVideo } from '../telemetry/time'
+import { measureLapDistance } from '../telemetry/lapDistance'
 
 interface Props {
   /** GPS 数据起始绝对时间戳 ms（用于换算 sample，不直接决定 GPS 条在时间轴上的位置）*/
@@ -199,6 +201,13 @@ export default function Timeline({
   )
 
   const activeLapNum = currentSample?.lapNum ?? null
+  const gpsT = dataStartT + playheadT - dataOffsetMs
+  const currentLap = laps.find(l => gpsT >= l.startT && gpsT < l.endT)
+  const currentDistance = currentLap ? measureLapDistance(samples, currentLap.startT, currentLap.endT, gpsT) : null
+  const lapDistances = new Map(laps.map((lap, i) => [lap.lapNum, {
+    meters: measureLapDistance(samples, lap.startT, lap.endT)?.meters,
+    complete: i < laps.length - 1 && lap.lapNum > 0 && lap.startT >= samples[0]?.t,
+  }]))
   const offsetSec = (videoOffsetMs - dataOffsetMs) / 1000
 
   return (
@@ -211,6 +220,11 @@ export default function Timeline({
             {offsetSec >= 0 ? '+' : ''}{offsetSec.toFixed(2)} s
           </span>
           <span className="text-slate-400 ml-4">当前</span>
+          {currentDistance && (
+            <span className="font-mono text-emerald-300" title="本圈从起跑线到当前播放位置的 GPS 行车线累计距离，仅在界面显示">
+              圈内已行驶 {currentDistance.travelledMeters.toFixed(1)} 米
+            </span>
+          )}
           <span className="font-mono text-cyan-300" title="GPS 实际时刻">
             {formatAbs(dataStartT + (playheadT - dataOffsetMs))}
           </span>
@@ -339,8 +353,8 @@ export default function Timeline({
                     const selectedLap = laps.find(l => l.lapNum === exportRangeSelection.selectedLapNum)
                     if (!selectedLap) return null
                     // 将GPS时间转换为视频时间
-                    const lapStartVideoSec = (selectedLap.startT - dataStartT - dataOffsetMs + videoOffsetMs) / 1000
-                    const lapEndVideoSec = (selectedLap.endT - dataStartT - dataOffsetMs + videoOffsetMs) / 1000
+                    const lapStartVideoSec = gpsToVideo(selectedLap.startT, dataStartT, dataOffsetMs, videoOffsetMs)
+                    const lapEndVideoSec = gpsToVideo(selectedLap.endT, dataStartT, dataOffsetMs, videoOffsetMs)
                     const exportLeft = tToX(videoOffsetMs + lapStartVideoSec * 1000)
                     const exportRight = tToX(videoOffsetMs + lapEndVideoSec * 1000)
                     return (
@@ -387,6 +401,7 @@ export default function Timeline({
           activeLapNum={activeLapNum}
           onJumpToLap={onJumpToLap}
           exportMode={exportRangeSelection?.mode ?? 'full'}
+          distances={lapDistances}
           selectedLapNum={exportRangeSelection?.selectedLapNum}
           onSelectLapForExport={(lapNum) => {
             if (onExportRangeChange) {
@@ -465,12 +480,13 @@ function SpeedThumbnail({ points, clipStartT, clipEndT, tToX }: {
 }
 
 /** 圈分段：All Laps + 每一圈带 delta 徽章 + 导出选择 */
-function LapChips({ laps, activeLapNum, onJumpToLap, exportMode, selectedLapNum, onSelectLapForExport }: {
+function LapChips({ laps, activeLapNum, onJumpToLap, exportMode, selectedLapNum, onSelectLapForExport, distances }: {
   laps: LapInfo[]
   activeLapNum: number | null
   onJumpToLap: (lap: LapInfo | null) => void
   exportMode?: 'full' | 'lap' | 'custom'
   selectedLapNum?: number
+  distances: Map<number, { meters?: number; complete: boolean }>
   onSelectLapForExport?: (lapNum: number) => void
 }) {
   const validLaps = laps.filter(l => l.lapNum > 0)
@@ -543,6 +559,9 @@ function LapChips({ laps, activeLapNum, onJumpToLap, exportMode, selectedLapNum,
             )}
             <span className="font-bold text-sm">Lap{lap.lapNum}</span>
             <span className="font-mono text-[10px] opacity-80 mt-0.5">{formatLap(lap.lapTime)}</span>
+            <span className="font-mono text-[10px] text-emerald-200 mt-1" title="GPS 行车线长度估算，受驾驶走线与定位精度影响；记录段不代表完整一圈">
+              {distances.get(lap.lapNum)?.meters == null ? '距离未知' : `${distances.get(lap.lapNum)?.complete ? '约' : '已记录'} ${distances.get(lap.lapNum)!.meters!.toFixed(1)} 米`}
+            </span>
           </button>
         )
       })}

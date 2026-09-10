@@ -59,3 +59,8 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
+
+/* 随应用打包的开源字体，离线预览与导出保持一致。 */
+@font-face { font-family: "Race Condensed"; src: url("./assets/fonts/race-condensed.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Race Mono"; src: url("./assets/fonts/race-mono.ttf") format("truetype"); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: "Race Serif"; src: url("./assets/fonts/race-serif.ttf") format("truetype"); font-weight: 600; font-display: swap; }

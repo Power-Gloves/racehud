@@ -94,6 +94,15 @@ export function alignAccel(
   const maxLagSec = opts.maxLagSec ?? 300
   const minOverlapSec = opts.minOverlapSec ?? 30
 
+  if (!(rate > 0 && cutoff > 0 && cutoff < rate / 2 && maxLagSec >= 0 && minOverlapSec > 0)) throw new Error('对齐参数无效')
+  for (const sig of [videoAccel, dataAccel]) {
+    if (sig.t.length < 2 || sig.t.length !== sig.mag.length || !sig.mag.every(Number.isFinite) ||
+        !sig.t.every((t, i) => Number.isFinite(t) && (i === 0 || t > sig.t[i - 1]))) {
+      throw new Error('对齐信号不足或时间戳不递增')
+    }
+    if (sig.t[sig.t.length - 1] - sig.t[0] < minOverlapSec) throw new Error('信号不足最小重叠时长')
+    if (sig.mag.every(v => Math.abs(v - sig.mag[0]) < 1e-8)) throw new Error('对齐信号没有有效运动变化')
+  }
   const a = normalize(lpf(resample(videoAccel, rate), cutoff, rate)) // video
   const b = normalize(lpf(resample(dataAccel, rate), cutoff, rate))  // data
   const n = a.length
@@ -138,7 +147,7 @@ export function alignAccel(
     ? Math.max(0, Math.min(1, (bestNcc - Math.max(0, secondNcc)) / bestNcc))
     : 0
 
-  return { lagSeconds: bestLag / rate, score: bestNcc, confidence }
+  return { lagSeconds: bestLag / rate + videoAccel.t[0] - dataAccel.t[0], score: bestNcc, confidence }
 }
 
 /** 从统一 Sample[] 构造一条加速度信号（数据侧用水平合 G） */

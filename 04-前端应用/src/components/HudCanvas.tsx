@@ -6,8 +6,10 @@
  *
  * 这个组件用的 canvas 渲染逻辑跟"导出"完全一样——所见即所得。
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { loadHudFonts } from '../themes/fonts'
 import type { Theme, HudFrame } from '../themes'
+import { renderHud } from '../themes/render'
 
 interface Props {
   theme: Theme
@@ -19,6 +21,8 @@ interface Props {
 
 export default function HudCanvas({ theme, frame, designWidth, designHeight }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [fontsReady, setFontsReady] = useState(false)
+  useEffect(() => { let active = true; loadHudFonts().then(() => { if (active) setFontsReady(true) }).catch(() => {}); return () => { active = false } }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -27,8 +31,8 @@ export default function HudCanvas({ theme, frame, designWidth, designHeight }: P
     if (!ctx) return
     // 用 frame 里的尺寸（外层保证它和 designWidth/Height 一致）
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    theme.drawHud(ctx, frame)
-  }, [theme, frame])
+    renderHud(ctx, theme, frame)
+  }, [theme, frame, fontsReady])
 
   return (
     <canvas

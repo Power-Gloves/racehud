@@ -34,6 +34,8 @@ export interface AutoLapResult {
 }
 
 export interface AutoLapOptions {
+  /** 设备圈号变化点，用于显示原始起跑线，不受滑块避开首尾的限制。 */
+  referenceIndex?: number
   /** 起跑线沿轨迹的相对位置 0~1。null/undefined = 自动选 */
   trackPosition?: number | null
   /** 检测线半宽（米），默认 15 */
@@ -70,7 +72,9 @@ export function autoDetectLaps<T extends LapSample>(
 
   // 2. 选起跑线参考点
   let refIdx: number
-  if (opts.trackPosition != null) {
+  if (opts.referenceIndex != null) {
+    refIdx = Math.max(0, Math.min(n - 1, Math.round(opts.referenceIndex)))
+  } else if (opts.trackPosition != null) {
     // 用户指定：沿轨迹位置 0~1，跳过首尾各 5%（pit 区）
     const p = Math.max(0, Math.min(1, opts.trackPosition))
     const lo = Math.floor(n * 0.05)
@@ -109,20 +113,24 @@ export function autoDetectLaps<T extends LapSample>(
 
   // 3. 过线检测
   const crossings: number[] = []
-  let lastCrossIdx = -1000
+  let lastCrossT = -Infinity
   for (let i = 1; i < n; i++) {
-    if (i - lastCrossIdx < 20) continue
+    if (samples[i].t - lastCrossT < 2000) continue
     const mvx = xs[i] - xs[i - 1]
     const mvy = ys[i] - ys[i - 1]
     const mvlen = Math.hypot(mvx, mvy)
-    if (mvlen < 0.5) continue
+    if (mvlen < 0.000001 || samples[i].speed < 1) continue
     const dot = (mvx * dirX + mvy * dirY) / mvlen
     if (dot < 0.3) continue
     const p1 = { x: xs[i - 1], y: ys[i - 1] }
     const p2 = { x: xs[i], y: ys[i] }
     if (segIntersect(p1, p2, lineA, lineB)) {
-      crossings.push(samples[i].t)
-      lastCrossIdx = i
+      const before = (xs[i - 1] - refX) * dirX + (ys[i - 1] - refY) * dirY
+      const after = (xs[i] - refX) * dirX + (ys[i] - refY) * dirY
+      const fraction = Math.max(0, Math.min(1, -before / (after - before)))
+      const crossT = samples[i - 1].t + fraction * (samples[i].t - samples[i - 1].t)
+      crossings.push(crossT)
+      lastCrossT = crossT
     }
   }
 
@@ -189,7 +197,7 @@ function computeBestCompare<T extends LapSample>(
     if (indices.length < 10) continue
     const first = samples[indices[0]]
     const last = samples[indices[indices.length - 1]]
-    const lapTime = (last.t - first.t) / 1000 + (first.lapTimeInLap ?? 0) / 1000
+    const lapTime = num < crossings.length ? (crossings[num] - crossings[num - 1]) / 1000 : (last.t - first.t) / 1000 + (first.lapTimeInLap ?? 0) / 1000
     laps.push({ lapNum: num, indices, lapTime })
   }
   if (laps.length === 0) return
@@ -197,18 +205,9 @@ function computeBestCompare<T extends LapSample>(
   // 按圈号排序
   laps.sort((a, b) => a.lapNum - b.lapNum)
 
-  // 找最快圈（用中位数附近过滤离群圈，跟 useLaps 一致）
-  // 注意: 排除最后一圈(可能是未完成的当前圈)
-  const completedLaps = laps.slice(0, -1) // 排除最后一圈(圈号最大的)
-  if (completedLaps.length === 0) {
-    // 如果只有一圈,用这一圈作为基准
-    completedLaps.push(laps[0])
-  }
-  
-  const times = completedLaps.map(l => l.lapTime).sort((a, b) => a - b)
-  const median = times[Math.floor(times.length / 2)]
-  const valid = completedLaps.filter(l => l.lapTime >= median * 0.7 && l.lapTime <= median * 1.3)
-  const pool = valid.length > 0 ? valid : completedLaps
+  // 仅相邻两次过线之间的完整圈参与比较，与 useLaps 共用边界语义。
+  const pool = laps.filter(l => l.lapNum < crossings.length && l.lapTime > 0)
+  if (!pool.length) return
   const best = pool.reduce((b, l) => l.lapTime < b.lapTime ? l : b, pool[0])
 
   // 算最佳圈的"距离 → 用时"映射（按本圈起点累计米）

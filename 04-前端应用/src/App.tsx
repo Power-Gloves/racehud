@@ -10,8 +10,11 @@ import ChangelogModal from './components/ChangelogModal'
 import { interpolateSampleAt, useLaps } from './hooks/useLaps'
 import { DEFAULT_THEME_ID, getTheme, type HudFrame } from './themes'
 import { autoSync, type AutoSyncResult } from './telemetry'
+import { prepareTelemetry } from './telemetry/prepare'
+import { gpsToVideo, validateRange } from './telemetry/time'
+import { createStartLightsCue } from './themes/startLights'
 
-const VERSION = 'v2.1.0'
+const VERSION = 'v2.2.0'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
  *  scale = innerWidth / 1920，浏览器 zoom 时 scale 同步变，物理大小保持不变 */
@@ -33,12 +36,16 @@ export default function App() {
   const [settings, setSettings] = useDefaultSettings()
   
   // 导出范围选择（用于Timeline可视化交互）
-  const [exportRangeSelection, setExportRangeSelection] = useState<{
-    mode: 'full' | 'lap' | 'custom'
-    selectedLapNum?: number
-    customStartSec?: number
-    customEndSec?: number
-  }>({ mode: 'full' })
+  const exportRangeSelection = {
+    mode: settings.exportMode,
+    selectedLapNum: settings.selectedLap,
+    customStartSec: settings.customStart,
+    customEndSec: settings.customEnd,
+  }
+  const loadGeneration = useRef(0)
+  const syncGeneration = useRef(0)
+  const syncAbortRef = useRef<AbortController | null>(null)
+  const initializedSource = useRef<unknown>(null)
 
   const theme = useMemo(() => getTheme(themeId), [themeId])
 
@@ -69,7 +76,9 @@ export default function App() {
   async function handleExport() {
     if (!video || !data || !videoMeta) return
     if (exporting) return
-    const { exportVideo, downloadBlob } = await import('./export/exporter')
+    if (settings.exportMode === 'lap' && !laps.some(l => l.lapNum === settings.selectedLap)) {
+      setError('请先选择要导出的圈'); return
+    }
     setExporting(true)
     setExportProgress(0)
     setSyncMsg('正在导出，请勿关闭页面…')
@@ -113,8 +122,8 @@ export default function App() {
             const BUFFER_BEFORE = settings.bufferBefore ?? 5
             const BUFFER_AFTER = settings.bufferAfter ?? 5
             
-            const lapStartSec = (lap.startT - data.meta.startTime - dataOffsetMs + videoOffsetMs) / 1000
-            const lapEndSec = (lap.endT - data.meta.startTime - dataOffsetMs + videoOffsetMs) / 1000
+            const lapStartSec = gpsToVideo(lap.startT, data.meta.startTime, dataOffsetMs, videoOffsetMs)
+            const lapEndSec = gpsToVideo(lap.endT, data.meta.startTime, dataOffsetMs, videoOffsetMs)
             
             startSec = Math.max(0, lapStartSec - BUFFER_BEFORE)
             endSec = Math.min(videoMeta.duration, lapEndSec + BUFFER_AFTER)
@@ -137,6 +146,8 @@ export default function App() {
     }
     
     try {
+      const { exportVideo, downloadBlob } = await import('./export/exporter')
+      const range = validateRange(startSec, endSec, videoMeta.duration)
       const blob = await exportVideo({
         videoFile: video.file,
         videoOffsetMs,
@@ -147,9 +158,9 @@ export default function App() {
         finishLine: finishLine ?? undefined,
         unit: settings.unit,
         theme,
+        startLights,
         range: {
-          startSec,
-          endSec,
+          ...range,
           filename,
         },
         outputWidth,
@@ -181,6 +192,11 @@ export default function App() {
   /** 切换模式：清空所有已加载内容，重置状态 */
   function switchMode(next: Mode) {
     if (next === mode) return
+    loadGeneration.current++
+    syncGeneration.current++; syncAbortRef.current?.abort()
+    setSyncing(false)
+    cancelExport()
+    setSettings({ ...settings, exportMode: 'full', selectedLap: undefined })
     if (video?.url) URL.revokeObjectURL(video.url)
     setVideo(null)
     setVideoMeta(null)
@@ -217,14 +233,20 @@ export default function App() {
       setSyncMsg('需要同时加载视频和数据文件')
       return
     }
+    if (syncing) return
+    const request = ++syncGeneration.current
+    const syncAbort = new AbortController()
+    syncAbortRef.current = syncAbort
     setSyncing(true)
     setSyncMsg('正在智能对齐…')
     try {
       const res: AutoSyncResult | null = await autoSync(
         video.file,
         data.samples,
-        (r) => setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`),
+        (r) => { if (request === syncGeneration.current) setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`) },
+        syncAbort.signal,
       )
+      if (request !== syncGeneration.current) return
       if (!res) {
         setSyncMsg('该视频不含可识别的内嵌遥测（需 DJI / GoPro），请手动对齐')
         return
@@ -232,6 +254,9 @@ export default function App() {
       // lagSeconds 含义：data 索引 i 对应 video 索引 i+lag → video 时间 = data 时间 + lag
       // 时间轴换算：视频秒 = (playheadT - videoOffsetMs)/1000；GPS = startTime+(playheadT-dataOffsetMs)
       // 要让 video 比 data 晚 lag 秒：videoOffsetMs = dataOffsetMs - lag*1000
+      if (res.confidence < 0.1 || res.score < 0.3) {
+        setSyncMsg('对齐信号不可靠，已保留原偏移，请手动对齐'); return
+      }
       const newVideoOffset = dataOffsetMs - res.lagSeconds * 1000
       setVideoOffsetMs(newVideoOffset)
       setLocked(true)
@@ -242,9 +267,10 @@ export default function App() {
         setSyncMsg(`✓ 对齐完成（${res.videoTelemetry.model}，置信度 ${conf}%，偏移 ${res.lagSeconds.toFixed(2)}s）`)
       }
     } catch (e: unknown) {
+      if (request !== syncGeneration.current) return
       setSyncMsg(`对齐失败：${e instanceof Error ? e.message : String(e)}`)
     } finally {
-      setSyncing(false)
+      if (request === syncGeneration.current) setSyncing(false)
     }
   }
 
@@ -268,18 +294,23 @@ export default function App() {
   // 加载新数据时初始化：让 GPS 条和视频条都从同一序列时间起始（重合），
   // playhead 也指向那里
   useEffect(() => {
-    if (data) {
+    if (data && initializedSource.current !== autoLapSource) {
+      initializedSource.current = autoLapSource
       setDataOffsetMs(data.meta.startTime)
       setVideoOffsetMs(data.meta.startTime)
       setPlayheadT(data.meta.startTime)
     }
-  }, [data])
+  }, [data, autoLapSource])
 
   // 视频播放时 → 同步 playhead（视频秒数 = playheadT - videoOffset）
   useEffect(() => {
     if (!video) return
     setPlayheadT(videoOffsetMs + videoCurrentTime * 1000)
   }, [videoCurrentTime, videoOffsetMs, video])
+
+  useEffect(() => {
+    return () => { if (video?.url) URL.revokeObjectURL(video.url) }
+  }, [video])
 
   // rAF 循环：视频播放时按浏览器帧率（60fps）拉 video.currentTime
   // 替代 onTimeUpdate（只 4-15Hz），让 HUD 数字按视频帧率平滑更新
@@ -324,6 +355,16 @@ export default function App() {
   )
 
   const { laps, bestLap, currentLap } = useLaps(data?.samples ?? [], gpsTimeAtPlayhead)
+  const startLights = useMemo(() => data && videoMeta ? createStartLightsCue({
+    enabled: settings.startLights ?? true,
+    mode: settings.exportMode,
+    lap: laps.find(l => l.lapNum === settings.selectedLap),
+    bufferBefore: settings.bufferBefore,
+    dataStartT: data.meta.startTime,
+    dataOffsetMs,
+    videoOffsetMs,
+    videoDuration: videoMeta.duration,
+  }) : undefined, [data, videoMeta, laps, settings.startLights, settings.exportMode, settings.selectedLap, settings.bufferBefore, dataOffsetMs, videoOffsetMs])
 
   // HUD 帧上下文（喂给主题的 drawHud）
   // 内部画布固定 1920×1080（与 PreviewStage 保持一致）
@@ -340,46 +381,69 @@ export default function App() {
       laps, bestLap, currentLap,
       finishLine: finishLine ?? undefined,
       unit: settings.unit,
+      startLights,
     }
-  }, [data, currentSample, gpsTimeAtPlayhead, laps, bestLap, currentLap, finishLine, settings.unit])
+  }, [data, currentSample, gpsTimeAtPlayhead, laps, bestLap, currentLap, finishLine, settings.unit, startLights])
 
   /**
    * 应用自动分圈：基于原始 samples + 当前 autoLapPos 重新分圈。
    * 输出 ParsedVbo（含 lapNum/lapTimeInLap）+ 终点线坐标，灌进 data/finishLine。
    */
-  async function reapplyAutoLap(rawSamples: Sample[], meta: VboMeta, position: number | null) {
-    const { autoDetectLaps } = await import('./telemetry/autoLap')
-    // 注意 autoDetectLaps 会原地改 sample 的 lapNum/lapTimeInLap，
-    // 重算时先深拷贝一层，避免历史污染（lapNum 残留）
-    const samples: Sample[] = rawSamples.map(s => ({ ...s, lapNum: undefined, lapTimeInLap: undefined }))
-    const lapInfo = autoDetectLaps(samples, { trackPosition: position ?? null })
-    setData({ meta, samples })
-    setFinishLine(lapInfo.finishLine)
-    return lapInfo
+  async function handleTelemetryFile(file: File) {
+    const request = ++loadGeneration.current
+    cancelExport()
+    try {
+      const { parseTelemetryFile } = await import('./telemetry')
+      const parsed = await parseTelemetryFile(file)
+      if (request !== loadGeneration.current) return
+      acceptData(parsed)
+    } catch (e) {
+      if (request === loadGeneration.current) setError('解析失败：' + (e instanceof Error ? e.message : String(e)))
+    }
   }
 
-  // 当用户拖动滑块改变 autoLapPos 时，重新分圈
+  function acceptData(parsed: ParsedVbo) {
+    syncGeneration.current++; syncAbortRef.current?.abort()
+    setSyncing(false)
+    setAutoLapSource({ rawSamples: parsed.samples, meta: parsed.meta })
+    setAutoLapPos(null)
+    const prepared = prepareTelemetry(parsed, null)
+    setData(prepared.data)
+    setFinishLine(prepared.finishLine)
+    setSettings({ ...settings, exportMode: 'full', selectedLap: undefined })
+    setError(null)
+  }
+
   useEffect(() => {
     if (!autoLapSource) return
-    reapplyAutoLap(autoLapSource.rawSamples, autoLapSource.meta, autoLapPos).catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const prepared = prepareTelemetry({ samples: autoLapSource.rawSamples, meta: autoLapSource.meta }, autoLapPos)
+    setData(prepared.data)
+    setFinishLine(prepared.finishLine)
   }, [autoLapPos, autoLapSource])
 
   // 选择视频：建 blob URL +（若无外部数据）探测视频内嵌 GPS 遥测当数据源
-  async function handleVideoChosen(v: VideoFile) {
+  async function handleVideoChosen(v: VideoFile, selectedMode = mode) {
+    const request = ++loadGeneration.current
+    cancelExport()
+    syncGeneration.current++; syncAbortRef.current?.abort()
+    setSyncing(false)
     setVideo(v)
     setVideoMeta(null)
     setVideoCurrentTime(0)
 
     // 若已有外部 DLAP/VBO 数据，不覆盖
-    if (data) return
+    if (selectedMode === 'video+data') return
+    setData(null)
+    setAutoLapSource(null)
+    setFinishLine(null)
 
     // 探测视频内嵌遥测
     try {
       setSyncMsg('正在检测视频内嵌遥测…')
       const { extractVideoTelemetry } = await import('./telemetry')
       const vt = await extractVideoTelemetry(v.file, (r) =>
-        setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`))
+        { if (request === loadGeneration.current) setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`) })
+      if (request !== loadGeneration.current) return
       if (vt?.hasGps && vt.samples && vt.samples.length > 1) {
         // 视频自带 GPS → 组装 + 自动分圈（场景3）
         const samples = vt.samples as unknown as Sample[]
@@ -394,9 +458,8 @@ export default function App() {
           count: samples.length,
         }
         // 保存原始 samples 用于后续重新分圈
-        setAutoLapSource({ rawSamples: samples, meta })
-        setAutoLapPos(null) // 用算法自动选位置
-        const lapInfo = await reapplyAutoLap(samples, meta, null)
+        acceptData({ samples, meta })
+        const lapInfo = prepareTelemetry({ samples, meta }, null)
         const lapMsg = lapInfo.lapCount > 0 ? `，自动分出 ${lapInfo.lapCount} 圈（可在右栏微调起跑线）` : ''
         setSyncMsg(`✓ 已从 ${vt.model} 提取内嵌 GPS（${samples.length} 点）${lapMsg}`)
       } else if (vt && !vt.hasGps) {
@@ -405,7 +468,7 @@ export default function App() {
         setSyncMsg(null)
       }
     } catch {
-      setSyncMsg(null)
+      if (request === loadGeneration.current) setSyncMsg(null)
     }
   }
 
@@ -414,21 +477,12 @@ export default function App() {
     e.preventDefault()
     setDragHover(false)
     const files = Array.from(e.dataTransfer.files)
-    for (const file of files) {
-      const ext = file.name.toLowerCase().split('.').pop() || ''
-      if (ext === 'vbo' || ext === 'dlap') {
-        try {
-          const { parseTelemetryFile } = await import('./telemetry')
-          setData(await parseTelemetryFile(file))
-          setError(null)
-        } catch (err: unknown) {
-          setError(`解析失败：${err instanceof Error ? err.message : String(err)}`)
-        }
-      } else if (file.type.startsWith('video/') || ext === 'mp4' || ext === 'mov') {
-        const url = URL.createObjectURL(file)
-        await handleVideoChosen({ file, url, name: file.name, size: file.size })
-      }
-    }
+    const gpsFile = files.find(f => /\.(vbo|dlap)$/i.test(f.name))
+    const videoFile = files.find(f => f.type.startsWith('video/') || /\.(mp4|mov)$/i.test(f.name))
+    const selectedMode = gpsFile ? 'video+data' : mode
+    if (selectedMode !== mode) switchMode(selectedMode)
+    if (gpsFile) await handleTelemetryFile(gpsFile)
+    if (videoFile) await handleVideoChosen({ file: videoFile, url: URL.createObjectURL(videoFile), name: videoFile.name, size: videoFile.size }, selectedMode)
   }
 
   return (
@@ -477,19 +531,21 @@ export default function App() {
                   onModeChange={switchMode}
                   data={data}
                   video={video}
-                  onParsed={setData}
+                  onTelemetryFile={handleTelemetryFile}
                   onError={setError}
                   onChooseVideo={(v) => {
                     if (v) handleVideoChosen(v)
                     else {
+                      loadGeneration.current++; syncGeneration.current++; syncAbortRef.current?.abort(); setSyncing(false); cancelExport()
                       setVideo(null); setVideoMeta(null); setVideoCurrentTime(0)
                       // 清视频也清自动分圈源（视频是数据来源）
-                      if (autoLapSource) {
+                      if (mode === 'video-only') {
                         setAutoLapSource(null); setAutoLapPos(null); setFinishLine(null); setData(null)
                       }
                     }
                   }}
                   onClearData={() => {
+                    loadGeneration.current++; syncGeneration.current++; syncAbortRef.current?.abort(); setSyncing(false)
                     setData(null)
                     setAutoLapSource(null)
                     setAutoLapPos(null)
@@ -518,7 +574,7 @@ export default function App() {
                   settings={settings}
                   onChange={setSettings}
                   onExport={handleExport}
-                  exportEnabled={!!data && !!video && !exporting}
+                  exportEnabled={!!data && !!video && !!videoMeta && !exporting}
                   exporting={exporting}
                   exportProgress={exportProgress}
                   onCancelExport={cancelExport}
@@ -569,15 +625,14 @@ export default function App() {
                   }}
                   exportRangeSelection={exportRangeSelection}
                   onExportRangeChange={(selection) => {
-                    setExportRangeSelection(selection)
                     // 同步到settings
-                    setSettings((prev: ExportSettings) => ({
-                      ...prev,
+                    setSettings({
+                      ...settings,
                       exportMode: selection.mode,
                       selectedLap: selection.selectedLapNum,
                       customStart: selection.customStartSec,
                       customEnd: selection.customEndSec,
-                    }))
+                    })
                   }}
                 />
               ) : (
