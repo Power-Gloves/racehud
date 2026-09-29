@@ -8,11 +8,13 @@
  */
 import { minimalTheme } from './builtin/minimal'
 import { studioThemes } from './studio/themes'
+import { cleanThemes } from './studio/clean'
 import { customTheme, customNoLapTheme } from './builtin/custom'
 import type { Theme } from './types'
 
 export const THEMES: Theme[] = [
   minimalTheme,
+  ...cleanThemes,
   ...studioThemes,
   customTheme,
   customNoLapTheme,

@@ -2,6 +2,8 @@
 
 更新：2026-09-11。用户要求：先理解全仓库，再以已有 GoPro 体验为标准补齐 DJI 视频 + 外置 GPS 模式，检查计算及其他缺陷。不要将迁移方向颠倒。
 
+最新调整：2026-09-29，v2.3.0 长片导出内存修复及三个简约配色主题，详见文末。
+
 ## 目录与运行边界
 
 | 目录 | 用途 |
@@ -62,3 +64,11 @@ videoSec = (gpsT - G + D - V) / 1000
 ## v2.2.0 主题发布
 
 新增 themes/studio 的六种独立布局，保留极简和 DSK 原版。新主题无逐帧历史状态，路径 WeakMap 缓存；本地字体位于 src/assets/fonts，导出先等待字体。选择器 DSK 仅用静态示意，禁止为了缩略图调用其全局有状态绘制。发布说明见 docs/release-v2.2.0.md。回归共 12 组。
+
+## v2.3.0 长片导出
+
+- `export/storage.ts` 创建磁盘 StreamTarget，2 MiB 分块。支持保存选择器时直接写选定文件，否则 OPFS 临时文件；正常完成才提交，取消和失败 abort 未提交写入。
+- `exporter.ts` 必须显式使用 `fastStart:false`，禁止恢复 BufferTarget 或构建完整输出 ArrayBuffer。CanvasSink 使用两个循环画布。
+- `exportVideo` 返回磁盘 File（Blob 子类）；有 destination 时 App 不再次下载；无 destination 时 downloadBlob 负责下载并延迟清理。直接调用者通过 releaseExport 清理临时文件。
+- 新增 `studio/clean.ts` 的蓝白、薄荷、珊瑚主题，目前注册十二套。
+- 原数学回归加实际复用器存储回归在 `npm test` 中执行。实拍素材为麦浪 8.88 GB / 2070.165 秒 HEVC 视频与 DLAP；完整记录见 v2.3.0 发布说明。

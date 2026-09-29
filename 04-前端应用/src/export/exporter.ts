@@ -10,7 +10,7 @@
  * 关键：HUD 渲染复用主题的 drawHud(canvas, frame)，预览即导出。
  */
 import {   
-  Input, Output, BlobSource, BufferTarget,
+  Input, Output, BlobSource,
   ALL_FORMATS, Mp4OutputFormat,
   CanvasSource, AudioSampleSource, AudioSample,
   QUALITY_HIGH, canEncodeAudio,
@@ -23,6 +23,8 @@ import type { Sample, VboMeta, LapInfo } from '../types'
 import { renderHud } from '../themes/render'
 import { loadHudFonts } from '../themes/fonts'
 import type { StartLightsCue } from '../themes/startLights'
+import { createDiskOutput, releaseExport } from './storage'
+export { releaseExport } from './storage'
 
 export interface ExportRange {
   /** 起点（视频内秒数） */
@@ -34,6 +36,7 @@ export interface ExportRange {
 }
 
 export interface ExportOptions {
+  destination?: FileSystemFileHandle
   videoFile: File
   /** 视频时间到 GPS 数据时间的换算：gpsT = data.meta.startTime + (videoSec - videoBaseSec) * 1000 */
   videoOffsetMs: number
@@ -115,9 +118,10 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
   if (!outputCtx) throw new Error('无法创建输出 canvas 2d 上下文')
 
   // 3. 准备 mediabunny 输出
+  const disk = await createDiskOutput(opts.destination)
   const output = new Output({
-    format: new Mp4OutputFormat(),
-    target: new BufferTarget(),
+    format: new Mp4OutputFormat({ fastStart: false }),
+    target: disk.target,
   })
   try {
   const videoSource = new CanvasSource(outputCanvas as HTMLCanvasElement, {
@@ -148,21 +152,25 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
 
   // 创建 CanvasSink 用于解码视频帧
   const canvasSink = new CanvasSink(videoTrack, { 
+    poolSize: 2,
     width: W, 
     height: H,
     fit: 'contain' // 添加 fit 选项：保持宽高比，contain 或 cover
   })
 
   // mediabunny 的帧迭代
-  for await (const wrapped of canvasSink.canvases(range.startSec, range.endSec)) {
+  // 音视频按短窗口交替处理，避免某个编码器在另一整条轨道处理期间闲置被回收。
+  for (let windowStart = range.startSec; windowStart < range.endSec; windowStart += 5) {
+  const windowEnd = Math.min(windowStart + 5, range.endSec)
+  for await (const wrapped of canvasSink.canvases(windowStart, windowEnd)) {
     if (signal?.aborted) {
       await output.cancel()
       throw new Error('用户取消导出')
     }
     const { canvas: frameCanvas, timestamp, duration } = wrapped
 
-    const frameStart = Math.max(timestamp, range.startSec)
-    const frameEnd = Math.min(timestamp + duration, range.endSec)
+    const frameStart = Math.max(timestamp, windowStart)
+    const frameEnd = Math.min(timestamp + duration, windowEnd)
     if (frameEnd <= frameStart) continue
     frameCount++
 
@@ -189,20 +197,17 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
       lastProgress = progress
     }
   }
-
-  if (!frameCount) throw new Error('导出范围内没有可解码的视频帧')
-
   // 5. 音频使用同一裁剪起点，并裁掉首尾音频块的范围外采样。
   if (audioSource && audioTrack) {
     const audioBufferSink = new AudioBufferSink(audioTrack)
-    for await (const wrapped of audioBufferSink.buffers(range.startSec, range.endSec)) {
+    for await (const wrapped of audioBufferSink.buffers(windowStart, windowEnd)) {
       if (signal?.aborted) {
         await output.cancel()
         throw new Error('用户取消导出')
       }
       const { buffer, timestamp } = wrapped
-      const first = Math.max(0, Math.ceil((range.startSec - timestamp) * buffer.sampleRate))
-      const last = Math.min(buffer.length, Math.ceil((range.endSec - timestamp) * buffer.sampleRate))
+      const first = Math.max(0, Math.ceil((windowStart - timestamp) * buffer.sampleRate))
+      const last = Math.min(buffer.length, Math.ceil((windowEnd - timestamp) * buffer.sampleRate))
       if (last <= first) continue
       const trimmed = new AudioBuffer({ length: last - first, numberOfChannels: buffer.numberOfChannels, sampleRate: buffer.sampleRate })
       for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
@@ -213,15 +218,18 @@ export async function exportVideo(opts: ExportOptions): Promise<Blob> {
       }
     }
   }
+  }
+
+  if (!frameCount) throw new Error('导出范围内没有可解码的视频帧')
 
   if (signal?.aborted) throw new Error('用户取消导出')
   await output.finalize()
   onProgress?.(1)
 
-  const blob = new Blob([output.target.buffer!], { type: 'video/mp4' })
-  return blob
+  return await disk.finish()
   } catch (e) {
     await output.cancel().catch(() => {})
+    await disk.remove()
     throw e
   }
   } finally {
@@ -238,7 +246,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  setTimeout(() => { URL.revokeObjectURL(url); void releaseExport(blob) }, 60_000)
 }
 
 /** 在指定 GPS 时刻构造一个 HudFrame（不依赖 React 状态） */

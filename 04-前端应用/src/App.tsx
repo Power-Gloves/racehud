@@ -14,7 +14,7 @@ import { prepareTelemetry } from './telemetry/prepare'
 import { gpsToVideo, validateRange } from './telemetry/time'
 import { createStartLightsCue } from './themes/startLights'
 
-const VERSION = 'v2.2.0'
+const VERSION = 'v2.3.0'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
  *  scale = innerWidth / 1920，浏览器 zoom 时 scale 同步变，物理大小保持不变 */
@@ -146,9 +146,15 @@ export default function App() {
     }
     
     try {
+      const picker = (window as Window & { showSaveFilePicker?: (options: unknown) => Promise<FileSystemFileHandle> }).showSaveFilePicker
+      const destination = picker ? await picker.call(window, {
+        suggestedName: filename,
+        types: [{ description: 'MP4 视频', accept: { 'video/mp4': ['.mp4'] } }],
+      }) : undefined
       const { exportVideo, downloadBlob } = await import('./export/exporter')
       const range = validateRange(startSec, endSec, videoMeta.duration)
       const blob = await exportVideo({
+        destination,
         videoFile: video.file,
         videoOffsetMs,
         dataOffsetMs,
@@ -168,11 +174,11 @@ export default function App() {
         signal: abort.signal,
         onProgress: setExportProgress,
       })
-      downloadBlob(blob, filename)
+      if (!destination) downloadBlob(blob, filename)
       setSyncMsg('✓ 导出完成')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      if (msg.includes('取消')) setSyncMsg('已取消导出')
+      if (msg.includes('取消') || (e instanceof DOMException && e.name === 'AbortError')) setSyncMsg('已取消导出')
       else setSyncMsg(`导出失败：${msg}`)
     } finally {
       setExporting(false)

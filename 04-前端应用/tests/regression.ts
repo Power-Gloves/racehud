@@ -119,8 +119,8 @@ test('新主题圈时按播放时刻计算，毫秒进位和单位换算准确',
   assert.equal(values({...frame,playheadT:100000}).elapsed, '00:59.750')
 })
 test('保留三个原主题，旧主题标识映射到新的布局', () => {
-  assert.equal(THEMES.length,9)
-  assert.equal(new Set(THEMES.map(t=>t.id)).size,9)
+  assert.equal(THEMES.length,12)
+  assert.equal(new Set(THEMES.map(t=>t.id)).size,12)
   for(const id of ['minimal','custom','custom-no-lap'])assert.equal(getTheme(id).id,id)
   assert.equal(getTheme('neon').id,'slipstream')
   assert.equal(getTheme('f1').id,'apex')

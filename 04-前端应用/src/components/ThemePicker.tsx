@@ -3,6 +3,7 @@ import { THEMES, type Theme } from '../themes';
 import { loadHudFonts } from '../themes/fonts';
 import { previewFrame } from '../themes/studio/preview';
 const descriptions: Record<string, string> = {
+    azure: '蓝白色块 · 清晰计时', mint: '薄荷白 · 对角留白', coral: '珊瑚刻线 · 中央细带',
     minimal: '克制透明 · 原版保留', apex: '转播记分牌 · 朱红切角', chrono: '中央仪表 · 冷银刻度', roadbook: '纵向路书 · 琥珀导航', endurance: '底部数据带 · 工程蓝', slipstream: '开放排版 · 酸柠绿', heritage: '复古计时 · 奶油暗红', custom: '设计师原版 · 完整信息', 'custom-no-lap': '设计师原版 · 清爽模式',
 };
 function Thumbnail({ theme }: {

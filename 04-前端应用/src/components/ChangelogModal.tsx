@@ -27,8 +27,8 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">RaceHUD v2.2.0</h2>
-              <p className="text-sm text-orange-100">2026年9月 · 六套全新 HUD 设计</p>
+              <h2 className="text-2xl font-bold text-white">RaceHUD v2.3.0</h2>
+              <p className="text-sm text-orange-100">长视频磁盘导出 · 三套简约配色</p>
             </div>
           </div>
           <button
@@ -41,7 +41,11 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
 
         {/* 内容 */}
         <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-6 py-6 space-y-6">
-          <Section icon="🎨" title="v2.2.0 六种布局，六种风格" badge="NEW">
+          <Section icon="🎬" title="v2.3.0 长片导出内存修复" badge="NEW">
+            <p className="text-slate-300 leading-7">导出改为分块写入磁盘，复用解码画布，减少长片和分段导出的内存占用。Chrome / Edge 会先选择保存位置，成功后提交文件；取消时放弃未完成写入。</p>
+            <p className="mt-3 text-slate-300 leading-7">新增蓝白航线、薄荷留白、珊瑚刻线三套简约主题，现在共十二套主题。</p>
+          </Section>
+          <Section icon="🎨" title="v2.2.0 六种布局，六种风格" badge="历史">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <HighlightCard icon="01" title="极点转播 / 精密计时" desc="朱红转播记分牌与冷银中央仪表，突出实时速度和圈时。" />
               <HighlightCard icon="02" title="拉力路书 / 耐力工程" desc="琥珀纵向导航与底部工程数据带；数据带附带最近 8 秒速度曲线。" />
