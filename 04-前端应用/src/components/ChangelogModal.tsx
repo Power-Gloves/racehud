@@ -27,8 +27,8 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">RaceHUD v2.3.0</h2>
-              <p className="text-sm text-orange-100">长视频磁盘导出 · 三套简约配色</p>
+              <h2 className="text-2xl font-bold text-white">RaceHUD v2.4.0</h2>
+              <p className="text-sm text-orange-100">双圈视频与线路对比 · 冲线灯优化</p>
             </div>
           </div>
           <button
@@ -41,7 +41,11 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
 
         {/* 内容 */}
         <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-6 py-6 space-y-6">
-          <Section icon="🎬" title="v2.3.0 长片导出内存修复" badge="NEW">
+          <Section icon="🏁" title="v2.4.0 双圈对比与冲线灯优化" badge="NEW">
+            <p className="text-slate-300 leading-7">加载视频和 GPS 后，点击顶部“双圈对比”，可以同时播放两圈画面，并在同一张地图上比较行车线、圈时、行驶距离与速度。只有具备完整冲线及视频覆盖的圈可供选择。</p>
+            <p className="mt-3 text-slate-300 leading-7">五盏冲线红灯缩小并移到画面中上方，降低遮挡；点灯节奏不变。优化播放时的分圈与距离计算，并修复快速连续加载外置 GPS 和视频时偶发的数据丢失。</p>
+          </Section>
+          <Section icon="🎬" title="v2.3.0 长片导出内存修复" badge="历史">
             <p className="text-slate-300 leading-7">导出改为分块写入磁盘，复用解码画布，减少长片和分段导出的内存占用。Chrome / Edge 会先选择保存位置，成功后提交文件；取消时放弃未完成写入。</p>
             <p className="mt-3 text-slate-300 leading-7">新增蓝白航线、薄荷留白、珊瑚刻线三套简约主题，现在共十二套主题。</p>
           </Section>

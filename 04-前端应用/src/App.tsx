@@ -7,14 +7,16 @@ import LibraryPanel from './components/LibraryPanel'
 import SettingsPanel, { useDefaultSettings } from './components/SettingsPanel'
 import HudCanvas from './components/HudCanvas'
 import ChangelogModal from './components/ChangelogModal'
+import LapCompare from './components/LapCompare'
 import { interpolateSampleAt, useLaps } from './hooks/useLaps'
 import { DEFAULT_THEME_ID, getTheme, type HudFrame } from './themes'
 import { autoSync, type AutoSyncResult } from './telemetry'
 import { prepareTelemetry } from './telemetry/prepare'
 import { gpsToVideo, validateRange } from './telemetry/time'
 import { createStartLightsCue } from './themes/startLights'
+import { getComparableLaps } from './telemetry/lapCompare'
 
-const VERSION = 'v2.3.0'
+const VERSION = 'v2.4.0'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
  *  scale = innerWidth / 1920，浏览器 zoom 时 scale 同步变，物理大小保持不变 */
@@ -42,10 +44,12 @@ export default function App() {
     customStartSec: settings.customStart,
     customEndSec: settings.customEnd,
   }
-  const loadGeneration = useRef(0)
+  const dataGeneration = useRef(0)
+  const videoGeneration = useRef(0)
   const syncGeneration = useRef(0)
   const syncAbortRef = useRef<AbortController | null>(null)
   const initializedSource = useRef<unknown>(null)
+  const initialPreparation = useRef<unknown>(null)
 
   const theme = useMemo(() => getTheme(themeId), [themeId])
 
@@ -62,6 +66,7 @@ export default function App() {
 
   // 更新说明弹窗状态
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showLapCompare, setShowLapCompare] = useState(false)
 
   // 首次进入自动显示更新说明
   useEffect(() => {
@@ -198,10 +203,12 @@ export default function App() {
   /** 切换模式：清空所有已加载内容，重置状态 */
   function switchMode(next: Mode) {
     if (next === mode) return
-    loadGeneration.current++
+    dataGeneration.current++
+    videoGeneration.current++
     syncGeneration.current++; syncAbortRef.current?.abort()
     setSyncing(false)
     cancelExport()
+    setShowLapCompare(false)
     setSettings({ ...settings, exportMode: 'full', selectedLap: undefined })
     if (video?.url) URL.revokeObjectURL(video.url)
     setVideo(null)
@@ -360,7 +367,10 @@ export default function App() {
     [data, gpsTimeAtPlayhead]
   )
 
-  const { laps, bestLap, currentLap } = useLaps(data?.samples ?? [], gpsTimeAtPlayhead)
+  const { laps, baseLaps, bestLap, currentLap } = useLaps(data?.samples, gpsTimeAtPlayhead)
+  const comparableLaps = useMemo(() => data && videoMeta
+    ? getComparableLaps(data.samples, baseLaps, videoMeta.duration, data.meta.startTime, dataOffsetMs, videoOffsetMs)
+    : [], [data, baseLaps, videoMeta, dataOffsetMs, videoOffsetMs])
   const startLights = useMemo(() => data && videoMeta ? createStartLightsCue({
     enabled: settings.startLights ?? true,
     mode: settings.exportMode,
@@ -396,32 +406,37 @@ export default function App() {
    * 输出 ParsedVbo（含 lapNum/lapTimeInLap）+ 终点线坐标，灌进 data/finishLine。
    */
   async function handleTelemetryFile(file: File) {
-    const request = ++loadGeneration.current
+    const request = ++dataGeneration.current
     cancelExport()
+    setShowLapCompare(false)
     try {
       const { parseTelemetryFile } = await import('./telemetry')
       const parsed = await parseTelemetryFile(file)
-      if (request !== loadGeneration.current) return
+      if (request !== dataGeneration.current) return
       acceptData(parsed)
     } catch (e) {
-      if (request === loadGeneration.current) setError('解析失败：' + (e instanceof Error ? e.message : String(e)))
+      if (request === dataGeneration.current) setError('解析失败：' + (e instanceof Error ? e.message : String(e)))
     }
   }
 
   function acceptData(parsed: ParsedVbo) {
     syncGeneration.current++; syncAbortRef.current?.abort()
     setSyncing(false)
-    setAutoLapSource({ rawSamples: parsed.samples, meta: parsed.meta })
+    const source = { rawSamples: parsed.samples, meta: parsed.meta }
+    initialPreparation.current = source
+    setAutoLapSource(source)
     setAutoLapPos(null)
     const prepared = prepareTelemetry(parsed, null)
     setData(prepared.data)
     setFinishLine(prepared.finishLine)
     setSettings({ ...settings, exportMode: 'full', selectedLap: undefined })
     setError(null)
+    return prepared
   }
 
   useEffect(() => {
     if (!autoLapSource) return
+    if (initialPreparation.current === autoLapSource) { initialPreparation.current = null; return }
     const prepared = prepareTelemetry({ samples: autoLapSource.rawSamples, meta: autoLapSource.meta }, autoLapPos)
     setData(prepared.data)
     setFinishLine(prepared.finishLine)
@@ -429,8 +444,10 @@ export default function App() {
 
   // 选择视频：建 blob URL +（若无外部数据）探测视频内嵌 GPS 遥测当数据源
   async function handleVideoChosen(v: VideoFile, selectedMode = mode) {
-    const request = ++loadGeneration.current
+    const request = ++videoGeneration.current
+    if (selectedMode === 'video-only') dataGeneration.current++
     cancelExport()
+    setShowLapCompare(false)
     syncGeneration.current++; syncAbortRef.current?.abort()
     setSyncing(false)
     setVideo(v)
@@ -448,8 +465,8 @@ export default function App() {
       setSyncMsg('正在检测视频内嵌遥测…')
       const { extractVideoTelemetry } = await import('./telemetry')
       const vt = await extractVideoTelemetry(v.file, (r) =>
-        { if (request === loadGeneration.current) setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`) })
-      if (request !== loadGeneration.current) return
+        { if (request === videoGeneration.current) setSyncMsg(`正在解析视频遥测… ${(r * 100).toFixed(0)}%`) })
+      if (request !== videoGeneration.current) return
       if (vt?.hasGps && vt.samples && vt.samples.length > 1) {
         // 视频自带 GPS → 组装 + 自动分圈（场景3）
         const samples = vt.samples as unknown as Sample[]
@@ -464,8 +481,7 @@ export default function App() {
           count: samples.length,
         }
         // 保存原始 samples 用于后续重新分圈
-        acceptData({ samples, meta })
-        const lapInfo = prepareTelemetry({ samples, meta }, null)
+        const lapInfo = acceptData({ samples, meta })
         const lapMsg = lapInfo.lapCount > 0 ? `，自动分出 ${lapInfo.lapCount} 圈（可在右栏微调起跑线）` : ''
         setSyncMsg(`✓ 已从 ${vt.model} 提取内嵌 GPS（${samples.length} 点）${lapMsg}`)
       } else if (vt && !vt.hasGps) {
@@ -474,7 +490,7 @@ export default function App() {
         setSyncMsg(null)
       }
     } catch {
-      if (request === loadGeneration.current) setSyncMsg(null)
+      if (request === videoGeneration.current) setSyncMsg(null)
     }
   }
 
@@ -523,6 +539,13 @@ export default function App() {
               </svg>
               <span className="font-semibold">{VERSION} 更新</span>
             </button>
+            <button
+              type="button"
+              disabled={!video || comparableLaps.length < 2}
+              onClick={() => { videoRef.current?.pause(); setShowLapCompare(true) }}
+              title={comparableLaps.length < 2 ? '需要至少两圈有完整 GPS 和视频覆盖的圈' : '比较两圈视频与行车线'}
+              className="ml-3 rounded-full border border-cyan-400/35 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >双圈对比</button>
             {syncMsg && <span className="ml-4 text-cyan-300 text-xs">{syncMsg}</span>}
             {error && <span className="ml-auto text-red-400 text-xs">{error}</span>}
           </header>
@@ -542,7 +565,8 @@ export default function App() {
                   onChooseVideo={(v) => {
                     if (v) handleVideoChosen(v)
                     else {
-                      loadGeneration.current++; syncGeneration.current++; syncAbortRef.current?.abort(); setSyncing(false); cancelExport()
+                      videoGeneration.current++; if (mode === 'video-only') dataGeneration.current++; syncGeneration.current++; syncAbortRef.current?.abort(); setSyncing(false); cancelExport()
+                      setShowLapCompare(false)
                       setVideo(null); setVideoMeta(null); setVideoCurrentTime(0)
                       // 清视频也清自动分圈源（视频是数据来源）
                       if (mode === 'video-only') {
@@ -551,7 +575,8 @@ export default function App() {
                     }
                   }}
                   onClearData={() => {
-                    loadGeneration.current++; syncGeneration.current++; syncAbortRef.current?.abort(); setSyncing(false)
+                    dataGeneration.current++; syncGeneration.current++; syncAbortRef.current?.abort(); setSyncing(false)
+                    setShowLapCompare(false)
                     setData(null)
                     setAutoLapSource(null)
                     setAutoLapPos(null)
@@ -613,7 +638,7 @@ export default function App() {
                   videoName={video?.name}
                   locked={locked}
                   onToggleLock={() => setLocked(v => !v)}
-                  laps={laps}
+                  laps={baseLaps}
                   onAutoSync={handleAutoSync}
                   syncing={syncing}
                   onJumpToLap={(lap) => {
@@ -652,6 +677,7 @@ export default function App() {
       </div>
 
       {/* 拖拽遮罩 */}
+      {showLapCompare && video && comparableLaps.length >= 2 && <LapCompare videoUrl={video.url} laps={comparableLaps} unit={settings.unit} onClose={() => setShowLapCompare(false)} />}
       {dragHover && (
         <div className="absolute inset-0 bg-orange-500/10 border-4 border-dashed border-orange-400 pointer-events-none flex items-center justify-center z-50">
           <div className="text-2xl text-orange-300 font-bold">放手以导入文件</div>

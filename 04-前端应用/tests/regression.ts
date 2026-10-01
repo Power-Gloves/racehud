@@ -8,6 +8,7 @@ import { gpsToVideo, videoToGps, validateRange } from '../src/telemetry/time'
 import { prepareTelemetry } from '../src/telemetry/prepare'
 import { createStartLightsCue, getStartLightsState } from '../src/themes/startLights'
 import { measureLapDistance } from '../src/telemetry/lapDistance'
+import { compareTimeAt, getComparableLaps } from '../src/telemetry/lapCompare'
 import { time, values } from '../src/themes/studio/graphics'
 import { previewFrame } from '../src/themes/studio/preview'
 import { getTheme, THEMES } from '../src/themes'
@@ -107,6 +108,23 @@ test('行车线距离按圈边界插值，累计里程不误当圈长', () => {
   assert.equal(measureLapDistance([], 0, 1), null)
   assert.equal(measureLapDistance(samples, 4000, 5000), null)
   assert.equal(measureLapDistance(samples, 500, 500), null)
+})
+
+test('双圈对比只收录有完整冲线、GPS 与视频覆盖的圈', () => {
+  const samples = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000].map(t => ({ ...sample(t, Math.floor(t / 2000) + 1, t % 2000), distance: t / 10 }))
+  const laps = [
+    { lapNum: 1, startT: 0, endT: 2000, lapTime: 2, isBest: false, isCurrent: false },
+    { lapNum: 2, startT: 2000, endT: 4000, lapTime: 2, isBest: true, isCurrent: false },
+    { lapNum: 3, startT: 4000, endT: 6000, lapTime: 2, isBest: false, isCurrent: false },
+    { lapNum: 4, startT: 6000, endT: 7000, lapTime: 1, isBest: false, isCurrent: false },
+  ]
+  const all = getComparableLaps(samples, laps, 7, 0, 0, 0)
+  assert.deepEqual(all.map(l => l.lap.lapNum), [1, 2, 3])
+  assert.equal(all[0].samples[0].t, 0)
+  assert.equal(all[0].samples.at(-1)?.t, 2000)
+  assert.equal(compareTimeAt(all[1], 1.25), 3.25)
+  assert.equal(compareTimeAt(all[1], 5), 4)
+  assert.deepEqual(getComparableLaps(samples, laps, 7, 0, 0, 2500).map(l => l.lap.lapNum), [3])
 })
 test('新主题圈时按播放时刻计算，毫秒进位和单位换算准确', () => {
   assert.equal(time(59.9996), '01:00.000')

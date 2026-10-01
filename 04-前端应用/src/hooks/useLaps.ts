@@ -5,75 +5,70 @@ import { LapInfo, Sample } from '../types'
  * 从 samples 派生圈数据
  *
  * - DLAP：根据 lapNum 字段切分，每圈起点终点已经标好
- * - VBO：暂不支持（用户需手动标 start/finish 线，这一步以后做）
+ * - 内嵌 GPS / VBO：使用自动分圈后写入的 lapNum
  */
-export function useLaps(samples: Sample[], playheadT: number) {
+export function deriveLaps(samples: Sample[]) {
+  if (samples.length === 0 || samples[0].lapNum == null) {
+    return { laps: [] as LapInfo[], bestLap: null as LapInfo | null }
+  }
+
+  // 每圈只需要首尾采样，不复制整圈点数组。
+  const byLap = new Map<number, { first: Sample; last: Sample }>()
+  for (const s of samples) {
+    const n = s.lapNum
+    if (n == null) continue
+    const entry = byLap.get(n)
+    if (entry) entry.last = s
+    else byLap.set(n, { first: s, last: s })
+  }
+
+  const laps: LapInfo[] = []
+  for (const [lapNum, { first: start, last: end }] of byLap) {
+    // Dragy 的 lapTimeInLap 是当前采样点距本圈起点的毫秒数。
+    const accurateStartT = start.lapTimeInLap != null
+      ? start.t - start.lapTimeInLap
+      : start.t
+    const accurateLapTime = end.lapTimeInLap != null && end.lapTimeInLap > 0
+      ? end.lapTimeInLap / 1000
+      : (end.t - start.t) / 1000
+    laps.push({
+      lapNum,
+      startT: accurateStartT,
+      endT: end.t,
+      lapTime: accurateLapTime,
+      isBest: false,
+      isCurrent: false,
+    })
+  }
+  laps.sort((a, b) => a.lapNum - b.lapNum)
+
+  // 相邻圈的过线时间是完整圈边界，不能用最后一个采样点代替。
+  for (let i = 0; i < laps.length - 1; i++) {
+    laps[i].endT = laps[i + 1].startT
+    laps[i].lapTime = (laps[i].endT - laps[i].startT) / 1000
+  }
+  // 最后一段没有结束过线证据；首段若起点早于录制，也是不完整圈。
+  const valid = laps.slice(0, -1).filter(l => l.lapNum > 0 && l.lapTime > 0 && l.startT >= samples[0].t)
+
+  let bestLap: LapInfo | null = null
+  if (valid.length > 0) {
+    bestLap = valid.reduce((b, l) => l.lapTime < b.lapTime ? l : b, valid[0])
+    bestLap.isBest = true
+  }
+
+  return { laps, bestLap }
+}
+
+const EMPTY_SAMPLES: Sample[] = []
+
+export function useLaps(samples: Sample[] = EMPTY_SAMPLES, playheadT: number) {
+  const derived = useMemo(() => deriveLaps(samples), [samples])
   return useMemo(() => {
-    if (samples.length === 0 || samples[0].lapNum == null) {
-      return { laps: [] as LapInfo[], bestLap: null, currentLap: null }
-    }
-
-    // 按 lapNum 分组
-    const byLap = new Map<number, Sample[]>()
-    for (const s of samples) {
-      const n = s.lapNum
-      if (n == null) continue
-      if (!byLap.has(n)) byLap.set(n, [])
-      byLap.get(n)!.push(s)
-    }
-
-    const laps: LapInfo[] = []
-    for (const [lapNum, arr] of byLap) {
-      const start = arr[0]
-      const end = arr[arr.length - 1]
-      // dragy 的 lapTimeInLap（DLAP userTime × 1000）= 该 sample 距本圈过线的毫秒数
-      // 所以 真实过线时刻 = sample.t - sample.lapTimeInLap
-      // 用新圈第一个 sample 反推（精度 0~90ms 误差消除）
-      const accurateStartT = start.lapTimeInLap != null
-        ? start.t - start.lapTimeInLap
-        : start.t
-      // 该圈结束时刻 = 下一圈过线时刻（暂用本圈最后 sample 的 t + lapTimeInLap 之差的延伸）
-      // 简化：endT 就用最后 sample 的 t；lapTime 用 dragy 给的"该圈终值 lapTimeInLap"更准
-      const accurateLapTime = end.lapTimeInLap != null && end.lapTimeInLap > 0
-        ? end.lapTimeInLap / 1000
-        : (end.t - start.t) / 1000
-      laps.push({
-        lapNum,
-        startT: accurateStartT,
-        endT: end.t,
-        lapTime: accurateLapTime,
-        isBest: false,
-        isCurrent: false,
-      })
-    }
-    laps.sort((a, b) => a.lapNum - b.lapNum)
-
-    // 相邻圈的过线时间是完整圈边界，不能用最后一个采样点代替。
-    for (let i = 0; i < laps.length - 1; i++) {
-      laps[i].endT = laps[i + 1].startT
-      laps[i].lapTime = (laps[i].endT - laps[i].startT) / 1000
-    }
-    // 最后一段没有结束过线证据；首段若起点早于录制，也是不完整圈。
-    const valid = laps.slice(0, -1).filter(l => l.lapNum > 0 && l.lapTime > 0 && l.startT >= samples[0].t)
-
-    let bestLap: LapInfo | null = null
-    if (valid.length > 0) {
-      bestLap = valid.reduce((b, l) => l.lapTime < b.lapTime ? l : b, valid[0])
-      bestLap.isBest = true
-    }
-
-    // 找当前圈
-    let currentLap: LapInfo | null = null
-    for (const l of laps) {
-      if (playheadT >= l.startT && playheadT < l.endT) {
-        l.isCurrent = true
-        currentLap = l
-        break
-      }
-    }
-
-    return { laps, bestLap, currentLap }
-  }, [samples, playheadT])
+    const index = derived.laps.findIndex(l => playheadT >= l.startT && playheadT < l.endT)
+    if (index < 0) return { ...derived, baseLaps: derived.laps, currentLap: null }
+    const laps = derived.laps.map((lap, i) => i === index ? { ...lap, isCurrent: true } : lap)
+    return { laps, baseLaps: derived.laps, bestLap: derived.bestLap?.lapNum === laps[index].lapNum ? laps[index] : derived.bestLap, currentLap: laps[index] }
+  }, [derived, playheadT])
 }
 
 /**

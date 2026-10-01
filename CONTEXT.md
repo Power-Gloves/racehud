@@ -72,3 +72,11 @@ videoSec = (gpsT - G + D - V) / 1000
 - `exportVideo` 返回磁盘 File（Blob 子类）；有 destination 时 App 不再次下载；无 destination 时 downloadBlob 负责下载并延迟清理。直接调用者通过 releaseExport 清理临时文件。
 - 新增 `studio/clean.ts` 的蓝白、薄荷、珊瑚主题，目前注册十二套。
 - 原数学回归加实际复用器存储回归在 `npm test` 中执行。实拍素材为麦浪 8.88 GB / 2070.165 秒 HEVC 视频与 DLAP；完整记录见 v2.3.0 发布说明。
+
+## v2.4.0 双圈对比与播放优化（2026-10-02）
+
+- `telemetry/lapCompare.ts` 只选择有完整终点过线、GPS 样本及视频范围覆盖的圈，并以统一 `gpsToVideo` 换算两段视频时间。
+- `components/LapCompare.tsx` 是独立查看页，同一素材的两个视频按各自冲线后经过时间同步；两条行车线共用米制投影和缩放。对比不参与导出。
+- `deriveLaps` 仅随 GPS 样本变化重新计算；播放时仅查询当前圈。时间轴使用稳定圈表，距离只在轨迹/圈表变化时计算。
+- 外置模式的数据与视频使用独立异步版本号，快速连续加载互不作废；切模式仍同时使旧结果失效。
+- `startLights.ts` 五盏灯的时间状态不变，设计尺寸缩至 360×80，画面中上方、透明度降低。详见 `docs/release-v2.4.0.md`。

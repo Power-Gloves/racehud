@@ -204,10 +204,10 @@ export default function Timeline({
   const gpsT = dataStartT + playheadT - dataOffsetMs
   const currentLap = laps.find(l => gpsT >= l.startT && gpsT < l.endT)
   const currentDistance = currentLap ? measureLapDistance(samples, currentLap.startT, currentLap.endT, gpsT) : null
-  const lapDistances = new Map(laps.map((lap, i) => [lap.lapNum, {
+  const lapDistances = useMemo(() => new Map(laps.map((lap, i) => [lap.lapNum, {
     meters: measureLapDistance(samples, lap.startT, lap.endT)?.meters,
     complete: i < laps.length - 1 && lap.lapNum > 0 && lap.startT >= samples[0]?.t,
-  }]))
+  }])), [laps, samples])
   const offsetSec = (videoOffsetMs - dataOffsetMs) / 1000
 
   return (

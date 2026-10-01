@@ -42,39 +42,39 @@ export function drawStartLights(ctx: CanvasRenderingContext2D, width: number, he
   if (!state) return
   ctx.save()
   try {
-    ctx.globalAlpha = state.opacity
+    ctx.globalAlpha = state.opacity * 0.72
     const scale = width / 1920
-    ctx.translate(width / 2, height * .25)
+    ctx.translate(width / 2, height * .18)
     ctx.scale(scale, scale)
     // 独立灯架，避免沿用主题的字体、透明度或阴影状态。
-    ctx.shadowColor = 'rgba(0,0,0,0.55)'
-    ctx.shadowBlur = 16
-    ctx.fillStyle = 'rgba(12,14,18,0.90)'
+    ctx.shadowColor = 'rgba(0,0,0,0.38)'
+    ctx.shadowBlur = 10
+    ctx.fillStyle = 'rgba(12,14,18,0.70)'
     ctx.beginPath()
-    ctx.roundRect(-270, -55, 540, 110, 20)
+    ctx.roundRect(-180, -40, 360, 80, 16)
     ctx.fill()
     ctx.shadowBlur = 0
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'rgba(255,255,255,0.16)'
+    ctx.lineWidth = 1.5
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)'
     ctx.stroke()
     for (let i = 0; i < 5; i++) {
-      const x = (i - 2) * 100
+      const x = (i - 2) * 66
       ctx.beginPath()
-      ctx.arc(x, 0, 38, 0, Math.PI * 2)
+      ctx.arc(x, 0, 26, 0, Math.PI * 2)
       ctx.fillStyle = '#050609'
       ctx.fill()
       ctx.strokeStyle = '#37383e'
       ctx.stroke()
       const lit = i < state.lit
-      const glow = ctx.createRadialGradient(x - 9, -10, 2, x, 0, 31)
+      const glow = ctx.createRadialGradient(x - 6, -7, 1, x, 0, 22)
       glow.addColorStop(0, lit ? '#ffaaa0' : '#382126')
       glow.addColorStop(.35, lit ? '#ff423c' : '#26161a')
       glow.addColorStop(1, lit ? '#d51025' : '#150d10')
       ctx.beginPath()
-      ctx.arc(x, 0, 31, 0, Math.PI * 2)
+      ctx.arc(x, 0, 22, 0, Math.PI * 2)
       ctx.fillStyle = glow
       ctx.shadowColor = '#ff2037'
-      ctx.shadowBlur = lit ? 22 : 0
+      ctx.shadowBlur = lit ? 15 : 0
       ctx.fill()
       ctx.shadowBlur = 0
     }
