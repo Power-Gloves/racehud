@@ -16,7 +16,7 @@ import { gpsToVideo, validateRange } from './telemetry/time'
 import { createStartLightsCue } from './themes/startLights'
 import { getComparableLaps } from './telemetry/lapCompare'
 
-const VERSION = 'v2.4.0'
+const VERSION = 'v2.5.0'
 
 /** 设计宽固定 1920；设计高根据 viewport 浮动算（让应用永远铺满整个浏览器，不留白不滚动）
  *  scale = innerWidth / 1920，浏览器 zoom 时 scale 同步变，物理大小保持不变 */

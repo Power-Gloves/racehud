@@ -2,11 +2,11 @@
 
 在浏览器中把赛车视频与 GPS 遥测叠加，支持 GoPro 内嵌 GPS，以及 DJI / 其他视频配外置 DLAP、VBO 数据。核心解析、预览和导出在本机浏览器完成。
 
-当前版本 **v2.4.0**：新增双圈视频与行车线对比，缩小冲线红灯并优化播放时的分圈计算。保留磁盘流式导出与十二套主题。
+当前版本 **v2.5.0**：双圈对比采用左侧行车线、右侧速度与 delta 图表布局，支持同位置分析、同时间回放和图表联动定位。保留磁盘流式导出与十二套主题。
 
 [在线使用](https://power-gloves.github.io/racehud/)
 
-- [更新说明](docs/release-v2.4.0.md)
+- [更新说明](docs/release-v2.5.0.md)
 - [项目上下文与目录职责](CONTEXT.md)
 - [已修复问题及待处理清单](docs/project-audit.md)
 - [本地测试步骤](docs/local-testing.md)

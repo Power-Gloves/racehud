@@ -27,8 +27,8 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">RaceHUD v2.4.0</h2>
-              <p className="text-sm text-orange-100">双圈视频与线路对比 · 冲线灯优化</p>
+              <h2 className="text-2xl font-bold text-white">RaceHUD v2.5.0</h2>
+              <p className="text-sm text-orange-100">双圈速度曲线 · 位置对齐与秒差分析</p>
             </div>
           </div>
           <button
@@ -41,7 +41,11 @@ export default function ChangelogModal({ isOpen, onClose }: Props) {
 
         {/* 内容 */}
         <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-6 py-6 space-y-6">
-          <Section icon="🏁" title="v2.4.0 双圈对比与冲线灯优化" badge="NEW">
+          <Section icon="📈" title="v2.5.0 双圈速度与秒差分析" badge="NEW">
+            <p className="text-slate-300 leading-7">双圈对比统一深灰面板风格，下方左侧为紧凑行车线，右侧展示两圈速度与 delta 曲线。悬停查看对应位置的速度和用时；点击或拖动图表，同时定位两个视频。支持区段放大与全圈恢复。</p>
+            <p className="mt-3 text-slate-300 leading-7">新增“同位置分析”，保留“同时间回放”。A 为参考圈，delta = B 到达对应位置的用时 − A 用时：红色正值表示 B 慢，绿色负值表示 B 快。GPS 位置匹配偏差较大时提示距离比例估算；分析只用于查看。</p>
+          </Section>
+          <Section icon="🏁" title="v2.4.0 双圈对比与冲线灯优化" badge="历史">
             <p className="text-slate-300 leading-7">加载视频和 GPS 后，点击顶部“双圈对比”，可以同时播放两圈画面，并在同一张地图上比较行车线、圈时、行驶距离与速度。只有具备完整冲线及视频覆盖的圈可供选择。</p>
             <p className="mt-3 text-slate-300 leading-7">五盏冲线红灯缩小并移到画面中上方，降低遮挡；点灯节奏不变。优化播放时的分圈与距离计算，并修复快速连续加载外置 GPS 和视频时偶发的数据丢失。</p>
           </Section>

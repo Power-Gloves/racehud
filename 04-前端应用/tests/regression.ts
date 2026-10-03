@@ -9,6 +9,8 @@ import { prepareTelemetry } from '../src/telemetry/prepare'
 import { createStartLightsCue, getStartLightsState } from '../src/themes/startLights'
 import { measureLapDistance } from '../src/telemetry/lapDistance'
 import { compareTimeAt, getComparableLaps } from '../src/telemetry/lapCompare'
+import { analysisAt, buildLapAnalysis } from '../src/telemetry/lapAnalysis'
+import type { ComparableLap } from '../src/telemetry/lapCompare'
 import { time, values } from '../src/themes/studio/graphics'
 import { previewFrame } from '../src/themes/studio/preview'
 import { getTheme, THEMES } from '../src/themes'
@@ -125,6 +127,52 @@ test('双圈对比只收录有完整冲线、GPS 与视频覆盖的圈', () => {
   assert.equal(compareTimeAt(all[1], 1.25), 3.25)
   assert.equal(compareTimeAt(all[1], 5), 4)
   assert.deepEqual(getComparableLaps(samples, laps, 7, 0, 0, 2500).map(l => l.lap.lapNum), [3])
+})
+
+function analysisLap(duration: number, shift = 0): ComparableLap {
+  const samples = Array.from({ length: 101 }, (_, i) => ({
+    ...sample(i * duration * 10), lat: 30 + Math.sin(i / 100 * Math.PI * 2) * .001,
+    lng: 114 + Math.cos(i / 100 * Math.PI * 2) * .001 + shift,
+    distance: i * 10, speed: 3600 / duration,
+  }))
+  return { samples, lap: { lapNum: 1, startT: 0, endT: duration * 1000, lapTime: duration, isBest: false, isCurrent: false }, videoStartSec: 0, videoEndSec: duration }
+}
+
+test('同位置秒差从零开始，慢圈为正，终点等于真实圈时差', () => {
+  const result = buildLapAnalysis(analysisLap(60), analysisLap(66))
+  assert.equal(result.alignment, 'position')
+  assert.equal(result.points[0].delta, 0)
+  assert.ok(Math.abs(analysisAt(result, 500)!.delta - 3) < .03)
+  assert.equal(result.points[result.points.length - 1].delta, 6)
+  assert.ok(result.points.every((p, i) => i === 0 || p.timeB >= result.points[i - 1].timeB))
+  assert.ok(Math.abs(analysisAt(result, 30, 'timeA')!.distance - 500) < .01)
+})
+
+test('相同圈零秒差，交换参考圈反转终点符号', () => {
+  const a = analysisLap(60)
+  assert.ok(buildLapAnalysis(a, a).points.every(p => Math.abs(p.delta) < .001))
+  const result = buildLapAnalysis(analysisLap(66), a)
+  assert.equal(result.points[result.points.length - 1].delta, -6)
+})
+
+test('不同轨迹和非法距离不得伪装成可靠位置对齐', () => {
+  assert.equal(buildLapAnalysis({ ...analysisLap(60), samples: [] }, analysisLap(60)).alignment, 'invalid')
+  assert.equal(buildLapAnalysis(analysisLap(60), analysisLap(66, .01)).alignment, 'progress')
+  const broken = analysisLap(60)
+  broken.samples[30].distance = -10
+  assert.equal(buildLapAnalysis(broken, analysisLap(60)).alignment, 'invalid')
+  const plateau = analysisLap(66)
+  plateau.samples[30].distance = plateau.samples[29].distance
+  assert.ok(buildLapAnalysis(analysisLap(60), plateau).points.every(p => Number.isFinite(p.delta)))
+})
+
+test('局部得失时间来自位置用时，而不是整圈时间差线性摊分', () => {
+  const a = analysisLap(60), b = analysisLap(60)
+  b.samples = b.samples.map((s, i) => ({ ...s, t: s.t + Math.sin(i / 100 * Math.PI * 2) * 2000 }))
+  const result = buildLapAnalysis(a, b)
+  assert.ok(Math.abs(analysisAt(result, 250)!.delta - 2) < .05)
+  assert.ok(Math.abs(analysisAt(result, 750)!.delta + 2) < .05)
+  assert.equal(result.points.at(-1)!.delta, 0)
 })
 test('新主题圈时按播放时刻计算，毫秒进位和单位换算准确', () => {
   assert.equal(time(59.9996), '01:00.000')
